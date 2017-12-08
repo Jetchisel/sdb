@@ -2,7 +2,7 @@
 #: Title           : dbhist                                                                    #
 #: Sypnosis        : dbhist [OPTIONS]... [QUERY]...                                            #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Sat 09 Dec 2017 02:47:28 AM +08  /  Fri Dec  8 18:47:28 UTC 2017          #
+#: Last Edit       : Sat 09 Dec 2017 06:22:03 AM +08  /  Fri Dec  8 22:22:03 UTC 2017          #
 #: License         : MIT                                                                       #
 #: Version         : 1.0.0                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
@@ -80,15 +80,16 @@ Save bash_history to a database and show it to standard output.
 
 OPTIONS:
 
---limit n     n numbers of latest commands to show. Defaults to 100.
---all         include history of all sessions. Not only current.
---self        include history about dbhist
---starts      match only commands starts with query
---verbose     verbose output (shows sql)
---here        reduce search only for current pwd
---under       reduce search only for current and under pwd
---pwd         show working directory of cmd
---shell       access to shell
+  -a, --all        include history of all sessions. Not only current.
+  -b, --begin      match only commands starts with query.
+  -h, --help       Show this help.
+  -l, --limit n    n numbers of latest commands to show. Defaults to 100.
+  -p, --pwd        show working directory of cmd.
+  -s, --self       include history about dbhist.
+  -u, --under      reduce search only for current and under pwd.
+  -v, --verbose    verbose output (shows sql).
+  -H, --here       reduce search only for current pwd.
+  -S, --shell      access to shell.
 
 END
 
@@ -169,13 +170,13 @@ if ${DBHISTORY:-true}; then
     fi
 
     local IFS
-    local regexp
+    local regexp=""
     local __formated_history=""
     local __num=""
     local __epoch=""
     local __pwd=${PWD}
-    local command__
-    local __command
+    local command__=""
+    local __command=""
 
     if [[ ${OLDPWD} !=  ${__dbhist_oldpwd} ]]; then
       __pwd=${OLDPWD}
@@ -253,7 +254,7 @@ done 5<<< "$__command"
      local __limit=100
      local __all=false
      local __self=false
-     local __starts=false
+     local __begin=false
      local __verbose=false
      local __query=""
      local __location=""
@@ -267,15 +268,15 @@ done 5<<< "$__command"
 
      while (($#)); do
        case $1 in
-         --shell)
+         --shell|-S)
            __dbhist_sqlite
            return
            ;;
-         --help)
+         --help|-h)
            ____ShowHelp____
            return
            ;;
-         --limit)
+         --limit|-l)
            shift
            __limit=${1:?option require value}
            if [[ $__limit != +([0-9]) ]]; then
@@ -283,33 +284,33 @@ done 5<<< "$__command"
              return 1
            fi
            ;;
-         --all)
+         --all|-a)
            __all=true
            ;;
-         --self)
+         --self|-s)
            __self=true
            ;;
-         --starts)
-           __starts=true
+         --begin|-b)
+           __begin=true
            ;;
-         --verbose)
+         --verbose|-v)
            __verbose=true
            ;;
-         --here)
+         --here|-H)
            if [[ -n ${__location} ]]; then
              printf '%s: %s\n' "$____script_name____" 'Specifier for pwd already set!' >&2
              return 1
            fi
            __location=here
            ;;
-         --under)
+         --under|-u)
            if [[ -n ${__location} ]]; then
              printf '%s: %s\n' "$____script_name____" 'Specifier for pwd already set!' >&2
              return 1
            fi
            __location=under
            ;;
-         --pwd)
+         --pwd|-p)
            __pwd=true
            ;;
          -*)
@@ -356,7 +357,7 @@ done 5<<< "$__command"
 
      if [[ -n ${__query} ]]; then
        __query=${__query//\"/\"\"}
-       if ! ${__starts} && [[ ${__query} != %* ]]; then
+       if ! ${__begin} && [[ ${__query} != %* ]]; then
          __query="%${__query}"
        fi
        if [[ "${__query}" != *% ]]; then
