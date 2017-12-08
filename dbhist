@@ -2,7 +2,7 @@
 #: Title           : dbhist                                                                    #
 #: Sypnosis        : dbhist [OPTIONS]... [QUERY]...                                            #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Mon 27 Nov 2017 23:14:27 PM +08  /  Mon Nov 27 15:14:27 UTC 2017          #
+#: Last Edit       : Fri 08 Dec 2017 13:40:15 PM +08  /  Fri Dec  8 05:40:15 UTC 2017          #
 #: License         : MIT                                                                       #
 #: Version         : 1.0.0                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
@@ -186,7 +186,7 @@ if ${DBHISTORY:-true}; then
 #                                                                                              #
 # ******************************************************************************************** #
 
-    IFS= read -r __formated_history < <(history 1)
+    IFS=$'\n' read -rd '' __formated_history < <(history 1)
 
 # ******************************************************************************************** #
 #                                                                                              #
