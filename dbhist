@@ -2,7 +2,7 @@
 #: Title           : dbhist                                                                    #
 #: Sypnosis        : dbhist [OPTIONS]... [QUERY]...                                            #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Fri 08 Dec 2017 13:40:15 PM +08  /  Fri Dec  8 05:40:15 UTC 2017          #
+#: Last Edit       : Sat 09 Dec 2017 02:47:28 AM +08  /  Fri Dec  8 18:47:28 UTC 2017          #
 #: License         : MIT                                                                       #
 #: Version         : 1.0.0                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
@@ -174,6 +174,8 @@ if ${DBHISTORY:-true}; then
     local __num=""
     local __epoch=""
     local __pwd=${PWD}
+    local command__
+    local __command
 
     if [[ ${OLDPWD} !=  ${__dbhist_oldpwd} ]]; then
       __pwd=${OLDPWD}
@@ -182,7 +184,7 @@ if ${DBHISTORY:-true}; then
 
 # ******************************************************************************************** #
 #                                                                                              #
-#          Save the recent bash command using "history 1" in a variable using "read"           #
+# Set IFS to a newline, use reads -d option, so multiline command such a heredocs is captured. #
 #                                                                                              #
 # ******************************************************************************************** #
 
@@ -204,14 +206,15 @@ if ${DBHISTORY:-true}; then
 
 # ******************************************************************************************** #
 #                                                                                              #
-#                     Insert/feed the variables to sqlite3 using INSERT.                       #
+#   Use a while read loop, just in case the last command is a multiline cmd, e.g. heredocs.    #
 #                                                                                              #
 # ******************************************************************************************** #
-
+while read -r command__ <&5; do
     __dbhist_sqlite <<-END
 INSERT INTO history(hist_id, epoch, cmd, ppid, pwd, salt)
-VALUES("${__num}", "${__epoch}", "${__command//\"/\"\"}", "${PPID}", "${__pwd//\"/\"\"}", "${__dbhist_salt}");
+VALUES("${__num}", "${__epoch}", "${command__//\"/\"\"}", "${PPID}", "${__pwd//\"/\"\"}", "${__dbhist_salt}");
 END
+done 5<<< "$__command"
 
 }
 
