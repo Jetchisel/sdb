@@ -2,12 +2,12 @@
 #: Title           : dbhist                                                                    #
 #: Sypnosis        : dbhist [OPTIONS]... [QUERY]...                                            #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Sat 09 Dec 2017 06:22:03 AM +08  /  Fri Dec  8 22:22:03 UTC 2017          #
+#: Last Edit       : Wed 13 Dec 2017 06:41:50 AM +08  /  Tue Dec 12 22:41:50 UTC 2017          #
 #: License         : MIT                                                                       #
 #: Version         : 1.0.0                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
 #: Description     : log bash_history in a database (A fork of dbhist.sh from Dennis Gladkikh) #
-#: Options         : --[pwd|here|all|self|starts|verbose|under|shell|limit]                    #
+#: Options         : [abhlpsuVHS]                                                              #
 #: Home Page       :                                                                           #
 #: ExtComm         : sqlite3                                                                   #
 # ============================================================================================ #
@@ -59,6 +59,14 @@
 
 # ******************************************************************************************** #
 #                                                                                              #
+#                       Enable extglob, just in case it is not enabled.                        #
+#                                                                                              #
+# ******************************************************************************************** #
+
+shopt -s extglob
+
+# ******************************************************************************************** #
+#                                                                                              #
 #                           Name of the script without the Pathname.                           #
 #                                                                                              #
 # ******************************************************************************************** #
@@ -72,27 +80,34 @@ ____script_name____=${BASH_SOURCE##*/}
 # ******************************************************************************************** #
 
 ____ShowHelp____() {
-       cat<<-END
 
-USAGE: dbhist [OPTIONS]... [QUERY]...
+  local IFS help
 
-Save bash_history to a database and show it to standard output.
+  IFS=$'\n' read -rd '' help <<<'
 
-OPTIONS:
+  USAGE: dbhist [OPTIONS]... [QUERY]...
 
-  -a, --all        include history of all sessions. Not only current.
-  -b, --begin      match only commands starts with query.
-  -h, --help       Show this help.
-  -l, --limit n    n numbers of latest commands to show. Defaults to 100.
-  -p, --pwd        show working directory of cmd.
-  -s, --self       include history about dbhist.
-  -u, --under      reduce search only for current and under pwd.
-  -v, --verbose    verbose output (shows sql).
-  -H, --here       reduce search only for current pwd.
-  -S, --shell      access to shell.
+  Records bash_history to a database and query it.
 
-END
+  A newly open shell does not have any commands to show
+  unless the -a option is specified, which defaults to
+  100 lines, unless the -l option is specified.
 
+  OPTIONS:
+
+    -a, --all        include history of all sessions. Not only current.
+    -b, --begin      match only commands starts with query.
+    -h, --help       Show this help.
+    -l, --limit n    n numbers of latest commands to show. Defaults to 100.
+    -p, --pwd        show working directory of cmd.
+    -s, --self       include history about dbhist.
+    -u, --under      reduce search only for current and under pwd.
+    -v, --verbose    verbose output (shows sql).
+    -H, --here       reduce search only for current pwd.
+    -S, --shell      access to the sqlite3 shell.
+
+  '
+  printf '\n%s\n' "$help"
 }
 
 # ******************************************************************************************** #
@@ -138,7 +153,7 @@ if ${DBHISTORY:-true}; then
     fi
   }
 
-  # Execute it with bash PROMPT
+  # Execute it with bash PROMPT_COMMAND
   __db_hist_prompt() {
 
     if ! ${__dbhist_initialized}; then
@@ -170,6 +185,7 @@ if ${DBHISTORY:-true}; then
     fi
 
     local IFS
+    local line
     local regexp=""
     local __formated_history=""
     local __num=""
@@ -177,6 +193,12 @@ if ${DBHISTORY:-true}; then
     local __pwd=${PWD}
     local command__=""
     local __command=""
+    local first=
+    local secondtemp0=""
+    local secondtemp1=""
+    local second=""
+    local thirdtemp0=""
+    local third=""
 
     if [[ ${OLDPWD} !=  ${__dbhist_oldpwd} ]]; then
       __pwd=${OLDPWD}
@@ -189,61 +211,44 @@ if ${DBHISTORY:-true}; then
 #                                                                                              #
 # ******************************************************************************************** #
 
-    IFS=$'\n' read -rd '' __formated_history < <(history 1)
+    IFS=$'\n' read -u 5 -rd ''  __formated_history 5< <(history 1)
 
 # ******************************************************************************************** #
 #                                                                                              #
-#        Using E.R.E and bash_rematch to split the output of "history 1" into 3 parts.         #
+#   Parameter expansion to extract the data/info from "history 1" and split it into 3 parts.   #
 #                                                                                              #
 # ******************************************************************************************** #
 
-    regexp='[[:space:]]+([[:digit:]]+)[[:space:]]+([[:digit:]]+)[[:space:]](.+)'
+    read -u 6 -r line 6<<< "$__formated_history"
+    first="${line%%[[:space:]]*}"
+    secondtemp0="${line##*"${first}"}"
+    secondtemp1=${secondtemp0##*( )}
+    second="${secondtemp1%%[[:space:]]*}"
 
-    if [[ $__formated_history =~ $regexp ]]; then
-      __num=${BASH_REMATCH[1]}
-      __epoch=${BASH_REMATCH[2]}
-      __command=${BASH_REMATCH[3]}
-    fi
+    IFS=$'\n' read -u 7 -rd '' line  7<<< "$__formated_history"
+    thirdtemp0="${line##*"${second}"}"
+    third="${thirdtemp0##*( )}"
+
+    __num=$first
+    __epoch=$second
+    __command=$third
 
 # ******************************************************************************************** #
 #                                                                                              #
 #   Use a while read loop, just in case the last command is a multiline cmd, e.g. heredocs.    #
 #                                                                                              #
 # ******************************************************************************************** #
-while read -r command__ <&5; do
+
+while read -r command__ <&8; do
     __dbhist_sqlite <<-END
 INSERT INTO history(hist_id, epoch, cmd, ppid, pwd, salt)
 VALUES("${__num}", "${__epoch}", "${command__//\"/\"\"}", "${PPID}", "${__pwd//\"/\"\"}", "${__dbhist_salt}");
 END
-done 5<<< "$__command"
+done 8<<< "$__command"
 
 }
 
   dbhist() {
-
-# ******************************************************************************************** #
-#                                                                                              #
-#          Check for the required app/executable is with in your PATH, exit otherwise.         #
-#                                                                                              #
-# ******************************************************************************************** #
-
-     ____Missing____=()
-     ____ExtComm____=(sqlite3)
-     ____Missing____Message="is either not installed or it is not in your PATH!"
-     ____ExitMessage____="Please install the following: "
-
-     for ____apps____ in "${____ExtComm____[@]}"; do
-       if ! type -P "$____apps____" >/dev/null; then
-         printf '%s %s\n' "$____apps____" "$____Missing____Message" >&2
-         ____Missing____+=("$____apps____")
-       fi
-     done
-
-
-     if (( ${#____Missing____[@]} )); then
-       printf '%s\n' "$____ExitMessage____[${____Missing____[*]}] exiting now!" >&2
-       return 127
-     fi
 
 # ******************************************************************************************** #
 #                                                                                              #
