@@ -2,9 +2,9 @@
 #: Title           : dbhist                                                                    #
 #: Sypnosis        : dbhist [OPTIONS]... [QUERY]...                                            #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Wed 13 Dec 2017 06:41:50 AM +08  /  Tue Dec 12 22:41:50 UTC 2017          #
+#: Last Edit       : Thu 14 Dec 2017 15:17:40 PM +08  /  Thu Dec 14 07:17:40 UTC 2017          #
 #: License         : MIT                                                                       #
-#: Version         : 1.0.0                                                                     #
+#: Version         : 1.2.0                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
 #: Description     : log bash_history in a database (A fork of dbhist.sh from Dennis Gladkikh) #
 #: Options         : [abhlpsuVHS]                                                              #
@@ -83,31 +83,42 @@ ____ShowHelp____() {
 
   local IFS help
 
-  IFS=$'\n' read -rd '' help <<<'
+IFS=$'\n' read -rd '' help <<<'
+USAGE: dbhist [OPTIONS]... [QUERY]...
 
-  USAGE: dbhist [OPTIONS]... [QUERY]...
+Records bash_history to a database and query it.
+Without any options/arguments the default is to show
+the recent commands if there is/are any in the current
+session.
 
-  Records bash_history to a database and query it.
+OPTIONS:
+  -a, --all        include history of all sessions. Not only current.
+  -b, --begin      match only commands starts with query.
+  -h, --help       Show this help.
+  -l, --limit n    n numbers of latest commands to show. Defaults to 100.
+  -p, --pwd        show working directory of cmd.
+  -s, --self       include history about dbhist.
+  -u, --under      reduce search only for current and under pwd.
+  -v, --verbose    verbose output (shows sql command).
+  -H, --here       reduce search only for current pwd.
+  -S, --shell      access to the sqlite3 shell.
 
-  A newly open shell does not have any commands to show
-  unless the -a option is specified, which defaults to
-  100 lines, unless the -l option is specified.
+A newly open shell does not have any commands to show
+unless the -a option is specified, which defaults to
+100 lines, unless the -l option is specified.
 
-  OPTIONS:
+The first column shows only the increment of the executed commands.
+The second column shows the date and time of the executed commands.
+The third column shows how many times the commands has been executed.
+The fourth and fifth column shows the exit status of the executed commands.
+The sixth column which is specified by the -p option shows the pwd of the executed commands.
+The last column is the executed commands.
 
-    -a, --all        include history of all sessions. Not only current.
-    -b, --begin      match only commands starts with query.
-    -h, --help       Show this help.
-    -l, --limit n    n numbers of latest commands to show. Defaults to 100.
-    -p, --pwd        show working directory of cmd.
-    -s, --self       include history about dbhist.
-    -u, --under      reduce search only for current and under pwd.
-    -v, --verbose    verbose output (shows sql).
-    -H, --here       reduce search only for current pwd.
-    -S, --shell      access to the sqlite3 shell.
-
-  '
-  printf '\n%s\n' "$help"
+NOTE:
+  Not all commands that exited with a non-zero is a failure, likewise not all commands
+  that exited with zero is a success.
+'
+  printf '%s\n' "$help"
 }
 
 # ******************************************************************************************** #
@@ -129,7 +140,7 @@ if ${DBHISTORY:-true}; then
   __dbhist_does_not_exists=0
 
   # Get location of .dbhist file, default location is under `$HOME/.dbhist`
-  __dbhist_file="${DBHISTORYFILE:-$HOME/.dbhist}"
+  __dbhist_file="${DBHISTORYFILE:-$HOME/.bash_history.sqlite}"
 
   # Execute command on sqlite with .dbhist file
   __dbhist_sqlite() {
@@ -144,6 +155,8 @@ if ${DBHISTORY:-true}; then
     cmd TEXT,
     epoch INTEGER,
     ppid INTEGER,
+    status TEXT,
+    exit_status INTEGER,
     pwd TEXT,
     salt INTEGER
     );'
@@ -155,6 +168,11 @@ if ${DBHISTORY:-true}; then
 
   # Execute it with bash PROMPT_COMMAND
   __db_hist_prompt() {
+    if [[ -f ~/dotfiles/prompt ]]; then
+      source ~/dotfiles/prompt
+    else
+      Last_Command=$?
+    fi
 
     if ! ${__dbhist_initialized}; then
       __db_hist_init
@@ -186,12 +204,10 @@ if ${DBHISTORY:-true}; then
 
     local IFS
     local line
-    local regexp=""
     local __formated_history=""
     local __num=""
     local __epoch=""
     local __pwd=${PWD}
-    local command__=""
     local __command=""
     local first=
     local secondtemp0=""
@@ -239,13 +255,20 @@ if ${DBHISTORY:-true}; then
 #                                                                                              #
 # ******************************************************************************************** #
 
-while read -r command__ <&8; do
-    __dbhist_sqlite <<-END
-INSERT INTO history(hist_id, epoch, cmd, ppid, pwd, salt)
-VALUES("${__num}", "${__epoch}", "${command__//\"/\"\"}", "${PPID}", "${__pwd//\"/\"\"}", "${__dbhist_salt}");
-END
-done 8<<< "$__command"
 
+    __dbhist_sqlite <<-END
+INSERT INTO history(hist_id, epoch, cmd, ppid, status, exit_status, pwd, salt)
+VALUES(
+  "${__num}",
+  "${__epoch}",
+  "${__command//\"/\"\"}",
+  "${PPID}",
+  "Status",
+  "${Last_Command}",
+  "${__pwd//\"/\"\"}",
+  "${__dbhist_salt}"
+);
+END
 }
 
   dbhist() {
@@ -346,11 +369,14 @@ done 8<<< "$__command"
        ' | ' ||
        substr('      '||count(*),-6) ||
        ' | ' ||
+       substr('      '||max(status),-6) ||
+       ': ' ||
+       substr('      '||max(exit_status),-4) ||
+       ' | ' ||
        ${__pwd_q}
      cmd
      FROM history
      WHERE 1 "
-
 
      if ! ${__all}; then
        __sql+="AND (salt=${__dbhist_salt} AND ppid=${PPID}) "
@@ -407,9 +433,7 @@ fi
 #                                                                                              #
 # ******************************************************************************************** #
 
-if [[ $PROMPT_COMMAND != *__db_hist_prompt* ]]; then
   PROMPT_COMMAND="__db_hist_prompt${PROMPT_COMMAND:+; $PROMPT_COMMAND}"
-fi
 
 # ============================================================================================ #
 #                                                                                              #
