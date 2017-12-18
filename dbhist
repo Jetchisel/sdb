@@ -2,12 +2,12 @@
 #: Title           : dbhist                                                                    #
 #: Sypnosis        : dbhist [OPTIONS]... [QUERY]...                                            #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Thu 14 Dec 2017 15:17:40 PM +08  /  Thu Dec 14 07:17:40 UTC 2017          #
+#: Last Edit       : Tue 19 Dec 2017 07:30:46 AM +08  /  Mon Dec 18 23:30:46 UTC 2017          #
 #: License         : MIT                                                                       #
-#: Version         : 1.2.0                                                                     #
+#: Version         : 1.4.0                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
 #: Description     : log bash_history in a database (A fork of dbhist.sh from Dennis Gladkikh) #
-#: Options         : [abhlpsuVHS]                                                              #
+#: Options         : [abcehmnpsuvwzHS]                                                         #
 #: Home Page       :                                                                           #
 #: ExtComm         : sqlite3                                                                   #
 # ============================================================================================ #
@@ -39,11 +39,11 @@
 #                                                                                              #
 #==============================================================================================#
 #                                                                                              #
-# To use it, just source the file `source dbhist.sh`                                           #
+# To use it, just source the file `source dbhist`                                              #
 #                                                                                              #
 # Configuration                                                                                #
 #   DBHISTORY=true - use false to disable                                                      #
-#   DBHISTORYFILE=$HOME/.dbhist - location of dbhist file                                      #
+#   DBHISTORYFILE=$HOME/.bash_history.sqlite  - location of dbhist sqlite3 database.           #
 #                                                                                              #
 # To make it work I keep next configuration for bash, the only important is the                #
 # time format, to make it unixtime                                                             #
@@ -67,14 +67,6 @@ shopt -s extglob
 
 # ******************************************************************************************** #
 #                                                                                              #
-#                           Name of the script without the Pathname.                           #
-#                                                                                              #
-# ******************************************************************************************** #
-
-____script_name____=${BASH_SOURCE##*/}
-
-# ******************************************************************************************** #
-#                                                                                              #
 #                               Function to show the help menu.                                #
 #                                                                                              #
 # ******************************************************************************************** #
@@ -83,8 +75,8 @@ ____ShowHelp____() {
 
   local IFS help
 
-IFS=$'\n' read -rd '' help <<<'
-USAGE: dbhist [OPTIONS]... [QUERY]...
+IFS=$'\n' read -rd '' help <<<"
+USAGE: ${BASH_SOURCE##*/} [OPTIONS]... [PATTERN]
 
 Records bash_history to a database and query it.
 Without any options/arguments the default is to show
@@ -92,32 +84,47 @@ the recent commands if there is/are any in the current
 session.
 
 OPTIONS:
-  -a, --all        include history of all sessions. Not only current.
-  -b, --begin      match only commands starts with query.
-  -h, --help       Show this help.
-  -l, --limit n    n numbers of latest commands to show. Defaults to 100.
-  -p, --pwd        show working directory of cmd.
-  -s, --self       include history about dbhist.
-  -u, --under      reduce search only for current and under pwd.
-  -v, --verbose    verbose output (shows sql command).
-  -H, --here       reduce search only for current pwd.
-  -S, --shell      access to the sqlite3 shell.
+  -a, --all               Include history of all sessions. Not only current.
+  -b, --begin word        Match only commands that starts with word.
+  -e, --status            Show the exit status of the commands.
+  -h, --help              Show this help.
+  -c, --cwd               Show the working directory of the commands.
+  -w, --whole-line word   Match commands with word from beginning to end.
+  -m, --max n             N numbers of latest commands to show. Defaults to 100.
+  -n, --non-zero          Show commands that exited with non-zero status.
+  -p, --path dir          Show commands executed inside the directory dir.
+  -s, --self              Include history about ${BASH_SOURCE##*/}.
+  -u, --under             Reduce search only for current and under pwd.
+  -v, --verbose           Verbose output (shows sql command).
+  -z, --zero              Show commands that exited with zero status.
+  -H, --here              Reduce search only for current pwd.
+  -S, --shell             Access to the sqlite3 shell.
+
+Long options that takes an argument also supports the following syntax:
+
+    --option=argument
+
+Short options that does not take an argument ca be joined as one command:
+
+    -aecnsuv
 
 A newly open shell does not have any commands to show
 unless the -a option is specified, which defaults to
 100 lines, unless the -l option is specified.
 
-The first column shows only the increment of the executed commands.
-The second column shows the date and time of the executed commands.
-The third column shows how many times the commands has been executed.
-The fourth and fifth column shows the exit status of the executed commands.
-The sixth column which is specified by the -p option shows the pwd of the executed commands.
+The 1rst column shows only the increment of the executed commands.
+The 2nd column shows the date and time of the executed commands.
+The 3rd column shows how many times the commands has been executed.
+The 4rth & 5fth column which is specified by the -e option shows the exit status.
+The 6th column which is specified by the -c option shows the pwd.
 The last column is the executed commands.
+
+ 1rst | 2nd | 3rd | 4rth: 5fth | 6th > last
 
 NOTE:
   Not all commands that exited with a non-zero is a failure, likewise not all commands
   that exited with zero is a success.
-'
+"
   printf '%s\n' "$help"
 }
 
@@ -129,25 +136,21 @@ NOTE:
 
 if ${DBHISTORY:-true}; then
 
-  # Kind of session ID, allows to see only commands executed in this terminal session
-  __dbhist_salt="${RANDOM}${RANDOM}"
-  # This allows us to verify existence of .dbhist file only once
-  __dbhist_initialized=false
-  # Keep the previous folder, this how we keep the PWD for commands like `cd ...`
-  __dbhist_oldpwd="${OLDPWD}"
+  __dbhist_salt="$RANDOM$RANDOM"
+
+  __dbhist_initialized=0
+
+  __dbhist_oldpwd="$OLDPWD"
 
   __dbhist_empty_data_base=0
   __dbhist_does_not_exists=0
 
-  # Get location of .dbhist file, default location is under `$HOME/.dbhist`
   __dbhist_file="${DBHISTORYFILE:-$HOME/.bash_history.sqlite}"
 
-  # Execute command on sqlite with .dbhist file
   __dbhist_sqlite() {
     sqlite3 "$__dbhist_file"
   }
 
-  # Initialize dbhist file, create table
   __db_hist_init() {
     local __sql='CREATE TABLE history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -162,28 +165,28 @@ if ${DBHISTORY:-true}; then
     );'
 
     if [[ ! -f "$__dbhist_file" ]]; then
-       __dbhist_sqlite <<< "${__sql}"
+       __dbhist_sqlite <<< "$__sql"
     fi
   }
 
-  # Execute it with bash PROMPT_COMMAND
   __db_hist_prompt() {
+
     if [[ -f ~/dotfiles/prompt ]]; then
       source ~/dotfiles/prompt
     else
       Last_Command=$?
     fi
 
-    if ! ${__dbhist_initialized}; then
+    if ((!__dbhist_initialized)); then
       __db_hist_init
-      __dbhist_initialized=true
+      __dbhist_initialized=1
       return
     fi
 
     if ((!__dbhist_does_not_exists)); then
       if [[ ! -f $__dbhist_file ]]; then
-        printf '%s: %s\n' "$____script_name____" "It looks like $__dbhist_file does not exists, please verify it." >&2
-        printf '%s: %s\n' "$____script_name____" "run: file $__dbhist_file" >&2
+        printf '%s: %s\n' "${BASH_SOURCE##*/}" "It looks like $__dbhist_file does not exists, please verify it." >&2
+        printf '%s: %s\n' "${BASH_SOURCE##*/}" "run: file $__dbhist_file" >&2
         __dbhist_does_not_exists=1
         return
       fi
@@ -191,8 +194,8 @@ if ${DBHISTORY:-true}; then
 
     if ((!__dbhist_empty_data_base)); then
       if [[ ! -s $__dbhist_file  ]]; then
-        printf '%s: %s\n' "$____script_name____" "It looks like $__dbhist_file is empty, please verify it." >&2
-        printf '%s: %s\n' "$____script_name____" "run: file $__dbhist_file" >&2
+        printf '%s: %s\n' "${BASH_SOURCE##*/}" "It looks like $__dbhist_file is empty, please verify it." >&2
+        printf '%s: %s\n' "${BASH_SOURCE##*/}" "run: file $__dbhist_file" >&2
         __dbhist_empty_data_base=1
         return
       fi
@@ -204,21 +207,21 @@ if ${DBHISTORY:-true}; then
 
     local IFS
     local line
-    local __formated_history=""
-    local __num=""
-    local __epoch=""
-    local __pwd=${PWD}
-    local __command=""
-    local first=
+    local formated_history=""
+    local num=""
+    local epoch=""
+    local pwd=$PWD
+    local command=""
+    local first=""
     local secondtemp0=""
     local secondtemp1=""
     local second=""
     local thirdtemp0=""
     local third=""
 
-    if [[ ${OLDPWD} !=  ${__dbhist_oldpwd} ]]; then
-      __pwd=${OLDPWD}
-      __dbhist_oldpwd=${OLDPWD}
+    if [[ $OLDPWD !=  $__dbhist_oldpwd ]]; then
+      pwd=$OLDPWD
+      __dbhist_oldpwd=$OLDPWD
     fi
 
 # ******************************************************************************************** #
@@ -227,7 +230,7 @@ if ${DBHISTORY:-true}; then
 #                                                                                              #
 # ******************************************************************************************** #
 
-    IFS=$'\n' read -u 5 -rd ''  __formated_history 5< <(history 1)
+    IFS=$'\n' read -u 5 -rd ''  formated_history 5< <(history 1)
 
 # ******************************************************************************************** #
 #                                                                                              #
@@ -235,40 +238,40 @@ if ${DBHISTORY:-true}; then
 #                                                                                              #
 # ******************************************************************************************** #
 
-    read -u 6 -r line 6<<< "$__formated_history"
+    read -u 6 -r line 6<<< "$formated_history"
     first="${line%%[[:space:]]*}"
     secondtemp0="${line##*"${first}"}"
     secondtemp1=${secondtemp0##*( )}
     second="${secondtemp1%%[[:space:]]*}"
 
-    IFS=$'\n' read -u 7 -rd '' line  7<<< "$__formated_history"
+    IFS=$'\n' read -u 7 -rd '' line  7<<< "$formated_history"
     thirdtemp0="${line##*"${second}"}"
     third="${thirdtemp0##*( )}"
 
-    __num=$first
-    __epoch=$second
-    __command=$third
+    num=$first
+    epoch=$second
+    command=$third
 
 # ******************************************************************************************** #
 #                                                                                              #
-#   Use a while read loop, just in case the last command is a multiline cmd, e.g. heredocs.    #
+#           Insert data from the variables to the sqlite3 database using a heredoc.            #
 #                                                                                              #
 # ******************************************************************************************** #
-
 
     __dbhist_sqlite <<-END
 INSERT INTO history(hist_id, epoch, cmd, ppid, status, exit_status, pwd, salt)
 VALUES(
-  "${__num}",
-  "${__epoch}",
-  "${__command//\"/\"\"}",
+  "${num}",
+  "${epoch}",
+  "${command//\"/\"\"}",
   "${PPID}",
   "Status",
   "${Last_Command}",
-  "${__pwd//\"/\"\"}",
+  "${pwd//\"/\"\"}",
   "${__dbhist_salt}"
 );
 END
+
 }
 
   dbhist() {
@@ -279,14 +282,70 @@ END
 #                                                                                              #
 # ******************************************************************************************** #
 
-     local __limit=100
-     local __all=false
-     local __self=false
-     local __begin=false
-     local __verbose=false
-     local __query=""
-     local __location=""
-     local __pwd=false
+     local max=100
+     local all=0
+     local exit_stat=0
+     local self=0
+     local whole_line=0
+     local path=0
+     local verbose=0
+     local pwd=0
+     local zero=0
+     local nonzero=0
+     local ExitStatus=""
+     local pathquery=""
+     local query=""
+     local location=""
+     local optstring
+
+# ******************************************************************************************** #
+#                                                                                              #
+#                      Getops from scratch, by: D.J. Mills aka e36freak.                       #
+#                                                                                              #
+# ******************************************************************************************** #
+
+     declare -a options
+
+     optstring=acesunvzHSb:m:w:p:
+
+     unset options
+     while (($#)); do
+       case $1 in
+
+         -[!-]?*)
+
+           for ((i=1; i<${#1}; i++)); do
+             c=${1:i:1}
+
+             options+=("-$c")
+
+
+             if [[ $optstring = *"$c:"* && ${1:i+1} ]]; then
+               options+=("${1:i+1}")
+               break
+             fi
+           done
+           ;;
+
+         --?*=*) options+=("${1%%=*}" "${1#*=}");;
+
+         --) options+=(--endopts);;
+
+         *) options+=("$1");;
+       esac
+       shift
+     done
+
+     set -- "${options[@]}"
+
+     if (( ${#options[@]} == 1 )); then
+       if [[ ${options[0]} != -* ]]; then
+         printf '%s\n' "Unknown option ${options[0]}" 'Try --help'
+         return 1
+       fi
+     fi
+
+     unset options
 
 # ******************************************************************************************** #
 #                                                                                              #
@@ -294,7 +353,7 @@ END
 #                                                                                              #
 # ******************************************************************************************** #
 
-     while (($#)); do
+     while [[ $1 = -?* ]]; do
        case $1 in
          --shell|-S)
            __dbhist_sqlite
@@ -304,125 +363,176 @@ END
            ____ShowHelp____
            return
            ;;
-         --limit|-l)
+         --max|-m)
            shift
-           __limit=${1:?option require value}
-           if [[ $__limit != +([0-9]) ]]; then
-             printf '%s: %s\n' "$____script_name____" 'Limit should be a number!' >&2
+           max=${1:?option require value}
+           if [[ $max != +([0-9]) ]]; then
+             printf '%s: %s\n' "${BASH_SOURCE##*/}" 'Maxlimit should be a number!' >&2
              return 1
            fi
            ;;
          --all|-a)
-           __all=true
+           all=1
+           ;;
+         --status|-e)
+           exit_stat=1
            ;;
          --self|-s)
-           __self=true
+           self=1
            ;;
-         --begin|-b)
-           __begin=true
+         --begin-with|-b)
+           shift
+           begin=1
+           if ((whole_line)); then
+             printf '%s\n' 'Conflicting options!'
+             return 1
+           fi
+           query=${1:?requires value}
+           ;;
+         --path|-p)
+           shift
+           path=1
+           pwd=1
+           pathquery=${1:?requires value}
            ;;
          --verbose|-v)
-           __verbose=true
+           verbose=1
+           ;;
+         --whole-line|-w)
+           shift
+           whole_line=1
+           if ((begin)); then
+             printf '%s\n' 'Conflicting options!'
+             return 1
+           fi
+           query=${1:?requires value}
            ;;
          --here|-H)
-           if [[ -n ${__location} ]]; then
-             printf '%s: %s\n' "$____script_name____" 'Specifier for pwd already set!' >&2
+           if [[ -n $location || -n $pathquery ]]; then
+             printf '%s: %s\n' "${BASH_SOURCE##*/}" 'Specifier for pwd already set!' >&2
              return 1
            fi
-           __location=here
+           location=here
            ;;
          --under|-u)
-           if [[ -n ${__location} ]]; then
-             printf '%s: %s\n' "$____script_name____" 'Specifier for pwd already set!' >&2
+           if [[ -n $location || -n $pathquery ]]; then
+             printf '%s: %s\n' "${BASH_SOURCE##*/}" 'Specifier for pwd already set!' >&2
              return 1
            fi
-           __location=under
+           location=under
            ;;
-         --pwd|-p)
-           __pwd=true
+         --cwd|-c)
+           pwd=1
            ;;
-         -*)
-           printf '%s: %s: %s\n' "$____script_name____" "Unknown option" "$1" >&2
-           return 1
+         --non-zero|-n)
+           nonzero=1
+           exit_stat=1
            ;;
+         --zero|-z)
+           zero=1
+           exit_stat=1
+           ;;
+         --endopts)
+           shift
+           break;;
          *)
-           if [[ -n ${__query} ]]; then
-             printf  '%s: %s\n' "$____script_name____" "Cannot specify more than one query!" >&2
-             return 1
-           fi
-           __query=${1:?requires value}
+           printf '%s: %s: %s\n' "${BASH_SOURCE##*/}" "Unknown option" "$1" >&2
+           return 1
            ;;
        esac
        shift
      done
 
-     __pwd_q=""
-     if ${__pwd}; then
-       __pwd_q='pwd || " > " ||'
-     fi
-
-     local __sql="
-     SELECT
-     substr('      '||max(id),-6) ||
-       ' | ' ||
-       datetime(max(epoch), 'unixepoch', 'localtime') ||
-       ' | ' ||
-       substr('      '||count(*),-6) ||
-       ' | ' ||
-       substr('      '||max(status),-6) ||
+     if ((exit_stat)); then
+       ExitStatus="substr('      '||max(status),-6) ||
        ': ' ||
        substr('      '||max(exit_status),-4) ||
-       ' | ' ||
-       ${__pwd_q}
-     cmd
-     FROM history
-     WHERE 1 "
-
-     if ! ${__all}; then
-       __sql+="AND (salt=${__dbhist_salt} AND ppid=${PPID}) "
+       ' | ' ||"
      fi
 
-     if ! ${__self}; then
-       __sql+="AND (cmd != 'dbhist' AND cmd NOT LIKE 'dbhist %') "
+     pwd_q=""
+     if ((pwd)); then
+       pwd_q='pwd || " > " ||'
      fi
 
-     if [[ -n ${__query} ]]; then
-       __query=${__query//\"/\"\"}
-       if ! ${__begin} && [[ ${__query} != %* ]]; then
-         __query="%${__query}"
+     local sql_commands="
+       SELECT
+       substr('      '||max(id),-6) ||
+         ' | ' ||
+         datetime(max(epoch), 'unixepoch', 'localtime') ||
+         ' | ' ||
+         substr('      '||count(*),-6) ||
+         ' | ' ||
+         $ExitStatus
+         $pwd_q
+       cmd
+       FROM history
+       WHERE 1 "
+
+     if ((!all)); then
+       sql_commands+="AND (salt=$__dbhist_salt AND ppid=$PPID) "
+     fi
+
+     if ((!self)); then
+       sql_commands+="AND (cmd != 'dbhist' AND cmd NOT LIKE 'dbhist %') "
+     fi
+
+     if [[ -n $query ]]; then
+       query=${query//\"/\"\"}
+       if ((begin)); then
+         query+="%"
+       elif ((whole_line)); then
+         query="%$query%"
        fi
-       if [[ "${__query}" != *% ]]; then
-         __query+="%"
-       fi
-       __sql+="AND cmd LIKE \"${__query}\" ESCAPE '\' "
+       sql_commands+="AND cmd LIKE \"$query\" ESCAPE '\' "
      fi
 
-     __pwd_l=${PWD//\"/\"\"}
+     pwd_l=${PWD//\"/\"\"}
 
-     case ${__location} in
+     case $location in
        here)
-         __sql+="AND (pwd == \"${__pwd_l}\") "
+         sql_commands+="AND (pwd == \"$pwd_l\") "
          ;;
        under)
-         __pwd_l=${__pwd_l//%/\%}
-         __pwd_l=${__pwd_l//_/\_}
-         __sql+="AND (pwd LIKE \"${__pwd_l}%\" ESCAPE '\') "
+         pwd_l=${pwd_l//%/\%}
+         pwd_l=${pwd_l//_/\_}
+         sql_commands+="AND (pwd LIKE \"$pwd_l%\" ESCAPE '\') "
          ;;
      esac
 
-     __sql+="GROUP BY cmd "
-
-     if ${__pwd}; then
-       __sql+=", pwd "
+     if ((path)); then
+       sql_commands+="AND pwd = \"${pathquery//\\//\/}\" "
      fi
 
-     __sql+="ORDER BY max(id) DESC LIMIT ${__limit} ;"
-
-     if ${__verbose}; then
-       printf '%s\n' "database: $__dbhist_file" 'sql:' "${__sql}" "${blank_line:-""}"
+     if ((zero)); then
+       if ((nonzero)); then
+         printf '%s\n' Conflicting options!
+         return 1
+       fi
+        sql_commands+="AND exit_status = '0' "
      fi
 
-     __dbhist_sqlite <<< "${__sql}"
+     if ((nonzero)); then
+       if ((zero)); then
+         printf '%s\n' Conflicting options!
+         return 1
+       fi
+        sql_commands+="AND exit_status > '0' "
+     fi
+
+     sql_commands+="GROUP BY cmd, exit_status "
+
+     if ((pwd)); then
+       sql_commands+=", pwd "
+     fi
+
+     sql_commands+="ORDER BY max(id) DESC LIMIT $max ;"
+
+     if ((verbose)); then
+       printf '%s\n' "database: $__dbhist_file" 'sql:' "$sql_commands" "${blank_line:-""}"
+     fi
+
+     __dbhist_sqlite <<< "$sql_commands"
   }
 
 fi
@@ -433,7 +543,9 @@ fi
 #                                                                                              #
 # ******************************************************************************************** #
 
+if [[ $PROMPT_COMMAND != *__db_hist_prompt* ]]; then
   PROMPT_COMMAND="__db_hist_prompt${PROMPT_COMMAND:+; $PROMPT_COMMAND}"
+fi
 
 # ============================================================================================ #
 #                                                                                              #
