@@ -2,7 +2,7 @@
 #: Title           : dbhist                                                                    #
 #: Sypnosis        : dbhist [OPTIONS]... [QUERY]...                                            #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Tue 19 Dec 2017 07:59:11 AM +08  /  Mon Dec 18 23:59:11 UTC 2017          #
+#: Last Edit       : Tue 19 Dec 2017 08:18:33 AM +08  /  Tue Dec 19 00:18:33 UTC 2017          #
 #: License         : MIT                                                                       #
 #: Version         : 1.4.0                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
@@ -76,7 +76,7 @@ ____ShowHelp____() {
   local IFS help
 
 IFS=$'\n' read -rd '' help <<<"
-USAGE: ${BASH_SOURCE##*/} [OPTIONS]... [PATTERN]
+USAGE: ${BASH_SOURCE##*/} [OPTIONS]... [QUERY]...
 
 Records bash_history to a database and query it.
 Without any options/arguments the default is to show
