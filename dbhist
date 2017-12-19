@@ -2,7 +2,7 @@
 #: Title           : dbhist                                                                    #
 #: Sypnosis        : dbhist [OPTIONS]... [QUERY]...                                            #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Tue 19 Dec 2017 07:30:46 AM +08  /  Mon Dec 18 23:30:46 UTC 2017          #
+#: Last Edit       : Tue 19 Dec 2017 07:59:11 AM +08  /  Mon Dec 18 23:59:11 UTC 2017          #
 #: License         : MIT                                                                       #
 #: Version         : 1.4.0                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
@@ -506,7 +506,7 @@ END
 
      if ((zero)); then
        if ((nonzero)); then
-         printf '%s\n' Conflicting options!
+         printf '%s\n' 'Conflicting options!'
          return 1
        fi
         sql_commands+="AND exit_status = '0' "
@@ -514,7 +514,7 @@ END
 
      if ((nonzero)); then
        if ((zero)); then
-         printf '%s\n' Conflicting options!
+         printf '%s\n' 'Conflicting options!'
          return 1
        fi
         sql_commands+="AND exit_status > '0' "
