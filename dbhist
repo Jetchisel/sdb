@@ -2,12 +2,12 @@
 #: Title           : dbhist                                                                    #
 #: Sypnosis        : dbhist [OPTIONS]... [QUERY]...                                            #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Tue 19 Dec 2017 08:18:33 AM +08  /  Tue Dec 19 00:18:33 UTC 2017          #
+#: Last Edit       : Thu 21 Dec 2017 01:37:22 AM +08  /  Wed Dec 20 17:37:22 UTC 2017          #
 #: License         : MIT                                                                       #
 #: Version         : 1.4.0                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
 #: Description     : log bash_history in a database (A fork of dbhist.sh from Dennis Gladkikh) #
-#: Options         : [abcehmnpsuvwzHS]                                                         #
+#: Options         : [abcehlmnpsuvwzHS]                                                        #
 #: Home Page       :                                                                           #
 #: ExtComm         : sqlite3                                                                   #
 # ============================================================================================ #
@@ -85,13 +85,15 @@ session.
 
 OPTIONS:
   -a, --all               Include history of all sessions. Not only current.
-  -b, --begin word        Match only commands that starts with word.
-  -e, --status            Show the exit status of the commands.
+  -b, --begin-with word   Match only commands that starts with word.
+  -e, --end-with word     Match only commands that ends with word.
+  -w, --with-word word    Match commands with word from beginning to end.
   -h, --help              Show this help.
-  -c, --cwd               Show the working directory of the commands.
-  -w, --whole-line word   Match commands with word from beginning to end.
+  -d, --directory         Show the working directory of the commands.
+  -l, --last-status       Show the exit status of the commands.
   -m, --max n             N numbers of latest commands to show. Defaults to 100.
   -n, --non-zero          Show commands that exited with non-zero status.
+  -r, --recurse-path dir  Show commands executed inside and under the directory dir.
   -p, --path dir          Show commands executed inside the directory dir.
   -s, --self              Include history about ${BASH_SOURCE##*/}.
   -u, --under             Reduce search only for current and under pwd.
@@ -106,18 +108,18 @@ Long options that takes an argument also supports the following syntax:
 
 Short options that does not take an argument ca be joined as one command:
 
-    -aecnsuv
+    -adlsvz
 
 A newly open shell does not have any commands to show
 unless the -a option is specified, which defaults to
 100 lines, unless the -l option is specified.
 
-The 1rst column shows only the increment of the executed commands.
+The 1rst column shows only the increment of all the executed commands.
 The 2nd column shows the date and time of the executed commands.
 The 3rd column shows how many times the commands has been executed.
-The 4rth & 5fth column which is specified by the -e option shows the exit status.
-The 6th column which is specified by the -c option shows the pwd.
-The last column is the executed commands.
+The 4rth & 5fth column which is specified by the -l option shows the exit status.
+The 6th column which is specified by the -d option shows the pwd.
+The last column is/are the executed commands. separated by a > from the status column.
 
  1rst | 2nd | 3rd | 4rth: 5fth | 6th > last
 
@@ -136,23 +138,23 @@ NOTE:
 
 if ${DBHISTORY:-true}; then
 
-  __dbhist_salt="$RANDOM$RANDOM"
+  __dbhist_salt=$RANDOM$RANDOM
 
   __dbhist_initialized=0
 
-  __dbhist_oldpwd="$OLDPWD"
+  __dbhist_oldpwd=$OLDPWD
 
   __dbhist_empty_data_base=0
   __dbhist_does_not_exists=0
 
-  __dbhist_file="${DBHISTORYFILE:-$HOME/.bash_history.sqlite}"
+  __dbhist_file=${DBHISTORYFILE:-$HOME/.bash_history.sqlite}
 
   __dbhist_sqlite() {
     sqlite3 "$__dbhist_file"
   }
 
   __db_hist_init() {
-    local __sql='CREATE TABLE history (
+    local sql='CREATE TABLE history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     hist_id INTEGER,
     cmd TEXT,
@@ -165,18 +167,12 @@ if ${DBHISTORY:-true}; then
     );'
 
     if [[ ! -f "$__dbhist_file" ]]; then
-       __dbhist_sqlite <<< "$__sql"
+      __dbhist_sqlite <<< "$sql"
     fi
   }
 
   __db_hist_prompt() {
-
-    if [[ -f ~/dotfiles/prompt ]]; then
-      source ~/dotfiles/prompt
-    else
-      Last_Command=$?
-    fi
-
+    Last_Command=$?
     if ((!__dbhist_initialized)); then
       __db_hist_init
       __dbhist_initialized=1
@@ -284,19 +280,26 @@ END
 
      local max=100
      local all=0
+     local begin=0
+     local end=0
      local exit_stat=0
      local self=0
      local whole_line=0
      local path=0
+     local rpath=0
      local verbose=0
      local pwd=0
      local zero=0
      local nonzero=0
      local ExitStatus=""
      local pathquery=""
-     local query=""
+     local rpathquery=""
+     local query_begin=""
+     local query_end=""
+     local query_whole=""
      local location=""
-     local optstring
+     local optstring=""
+     local first_sql_commands=""
 
 # ******************************************************************************************** #
 #                                                                                              #
@@ -306,7 +309,7 @@ END
 
      declare -a options
 
-     optstring=acesunvzHSb:m:w:p:
+     optstring=adsulnvzHSb:e:m:w:r:p:
 
      unset options
      while (($#)); do
@@ -365,7 +368,7 @@ END
            ;;
          --max|-m)
            shift
-           max=${1:?option require value}
+           max=${1:?option requires value}
            if [[ $max != +([0-9]) ]]; then
              printf '%s: %s\n' "${BASH_SOURCE##*/}" 'Maxlimit should be a number!' >&2
              return 1
@@ -374,7 +377,7 @@ END
          --all|-a)
            all=1
            ;;
-         --status|-e)
+         --last-status|-l)
            exit_stat=1
            ;;
          --self|-s)
@@ -384,10 +387,25 @@ END
            shift
            begin=1
            if ((whole_line)); then
-             printf '%s\n' 'Conflicting options!'
+             printf '%s\n' 'Conflicting options!' >&2
              return 1
            fi
-           query=${1:?requires value}
+           query_begin=${1:?requires value}
+           ;;
+         --end-with|-e)
+           shift
+           end=1
+           if ((whole_line)); then
+             printf '%s\n' 'Conflicting options!' >&2
+             return 1
+           fi
+           query_end=${1:?requires value}
+           ;;
+         --recurse-path|-r)
+           shift
+           rpath=1
+           pwd=1
+           rpathquery=${1:?requires value}
            ;;
          --path|-p)
            shift
@@ -398,14 +416,14 @@ END
          --verbose|-v)
            verbose=1
            ;;
-         --whole-line|-w)
+         --with-word|-w)
            shift
            whole_line=1
-           if ((begin)); then
-             printf '%s\n' 'Conflicting options!'
+           if ((begin || end)); then
+             printf '%s\n' 'Conflicting options!' >&2
              return 1
            fi
-           query=${1:?requires value}
+           query_whole=${1:?requires value}
            ;;
          --here|-H)
            if [[ -n $location || -n $pathquery ]]; then
@@ -421,7 +439,7 @@ END
            fi
            location=under
            ;;
-         --cwd|-c)
+         --directory|-d)
            pwd=1
            ;;
          --non-zero|-n)
@@ -434,7 +452,8 @@ END
            ;;
          --endopts)
            shift
-           break;;
+           break
+           ;;
          *)
            printf '%s: %s: %s\n' "${BASH_SOURCE##*/}" "Unknown option" "$1" >&2
            return 1
@@ -455,7 +474,7 @@ END
        pwd_q='pwd || " > " ||'
      fi
 
-     local sql_commands="
+     first_sql_commands="
        SELECT
        substr('      '||max(id),-6) ||
          ' | ' ||
@@ -469,39 +488,65 @@ END
        FROM history
        WHERE 1 "
 
+     declare -a sql_commands
+
+     sql_commands+=("$first_sql_commands")
+
      if ((!all)); then
-       sql_commands+="AND (salt=$__dbhist_salt AND ppid=$PPID) "
+       sql_commands+=("AND (salt=$__dbhist_salt AND ppid=$PPID) ")
      fi
 
      if ((!self)); then
-       sql_commands+="AND (cmd != 'dbhist' AND cmd NOT LIKE 'dbhist %') "
+       sql_commands+=("AND (cmd != 'dbhist' AND cmd NOT LIKE 'dbhist %') ")
      fi
 
-     if [[ -n $query ]]; then
-       query=${query//\"/\"\"}
-       if ((begin)); then
-         query+="%"
-       elif ((whole_line)); then
-         query="%$query%"
-       fi
-       sql_commands+="AND cmd LIKE \"$query\" ESCAPE '\' "
+     if ((begin)); then
+       query_begin=${query_begin//\"/\"\"}
+       query_begin="$query_begin%"
+       sql_commands+=("AND cmd LIKE \"$query_begin\" ESCAPE '\' ")
+     fi
+
+     if ((end)); then
+       query_end=${query_end//\"/\"\"}
+       query_end="%$query_end"
+       sql_commands+=("AND cmd LIKE \"$query_end\" ESCAPE '\' ")
+     fi
+
+     if ((whole_line)); then
+       query_whole=${query_whole//\"/\"\"}
+       query_whole="%$query_whole%"
+       sql_commands+=("AND cmd LIKE \"$query_whole\" ESCAPE '\' ")
      fi
 
      pwd_l=${PWD//\"/\"\"}
 
      case $location in
        here)
-         sql_commands+="AND (pwd == \"$pwd_l\") "
+         sql_commands+=("AND (pwd == \"$pwd_l\") ")
          ;;
        under)
          pwd_l=${pwd_l//%/\%}
          pwd_l=${pwd_l//_/\_}
-         sql_commands+="AND (pwd LIKE \"$pwd_l%\" ESCAPE '\') "
+         sql_commands+=("AND (pwd LIKE \"$pwd_l%\" ESCAPE '\') ")
          ;;
      esac
 
      if ((path)); then
-       sql_commands+="AND pwd = \"${pathquery//\\//\/}\" "
+       if [[ -n $rpathquery ]]; then
+         printf '%s\n' 'Conflicting options' >&2
+         return 1
+       fi
+       pathquery=${pathquery//\"/\"\"}
+       sql_commands+=("AND pwd = \"$pathquery\" ")
+     fi
+
+     if ((rpath)); then
+       if [[ -n $pathquery ]]; then
+         printf '%s\n' 'Conflicting options' >&2
+         return 1
+       fi
+       rpathquery=${rpathquery//\"/\"\"}
+       sql_commands+=("AND (pwd LIKE \"$rpathquery%\" ESCAPE '\') ")
      fi
 
      if ((zero)); then
@@ -509,7 +554,7 @@ END
          printf '%s\n' 'Conflicting options!'
          return 1
        fi
-        sql_commands+="AND exit_status = '0' "
+       sql_commands+=("AND exit_status = '0' ")
      fi
 
      if ((nonzero)); then
@@ -517,22 +562,22 @@ END
          printf '%s\n' 'Conflicting options!'
          return 1
        fi
-        sql_commands+="AND exit_status > '0' "
+       sql_commands+=("AND exit_status > '0' ")
      fi
 
-     sql_commands+="GROUP BY cmd, exit_status "
+     sql_commands+=("GROUP BY cmd, exit_status ")
 
      if ((pwd)); then
-       sql_commands+=", pwd "
+       sql_commands+=(", pwd ")
      fi
 
-     sql_commands+="ORDER BY max(id) DESC LIMIT $max ;"
+     sql_commands+=("ORDER BY max(id) DESC LIMIT $max ;")
 
      if ((verbose)); then
-       printf '%s\n' "database: $__dbhist_file" 'sql:' "$sql_commands" "${blank_line:-""}"
+       printf '%s\n' "database: $__dbhist_file" 'sql:' "${sql_commands[*]}" "${blank_line:-""}"
      fi
 
-     __dbhist_sqlite <<< "$sql_commands"
+     __dbhist_sqlite < <(printf '%s ' "${sql_commands[@]}")
   }
 
 fi
