@@ -2,7 +2,7 @@
 #: Title           : dbhist                                                                    #
 #: Sypnosis        : dbhist [OPTIONS]... [QUERY]...                                            #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Thu 21 Dec 2017 01:37:22 AM +08  /  Wed Dec 20 17:37:22 UTC 2017          #
+#: Last Edit       : Thu 21 Dec 2017 02:30:56 AM +08  /  Wed Dec 20 18:30:56 UTC 2017          #
 #: License         : MIT                                                                       #
 #: Version         : 1.4.0                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
@@ -115,13 +115,13 @@ unless the -a option is specified, which defaults to
 100 lines, unless the -l option is specified.
 
 The 1rst column shows only the increment of all the executed commands.
-The 2nd column shows the date and time of the executed commands.
-The 3rd column shows how many times the commands has been executed.
-The 4rth & 5fth column which is specified by the -l option shows the exit status.
-The 6th column which is specified by the -d option shows the pwd.
-The last column is/are the executed commands. separated by a > from the status column.
+The 2nd column shows how many times the commands has been executed.
+The 3rd column shows the date and time of the executed commands.
+The 4rth column which is specified by the -l option shows the exit status.
+The 5th column which is specified by the -d option shows the pwd.
+The last column is/are the executed commands. separated by a > from the path column.
 
- 1rst | 2nd | 3rd | 4rth: 5fth | 6th > last
+ 1rst | 2nd | 3rd | 4rth | 5th > last
 
 NOTE:
   Not all commands that exited with a non-zero is a failure, likewise not all commands
@@ -160,7 +160,6 @@ if ${DBHISTORY:-true}; then
     cmd TEXT,
     epoch INTEGER,
     ppid INTEGER,
-    status TEXT,
     exit_status INTEGER,
     pwd TEXT,
     salt INTEGER
@@ -255,13 +254,12 @@ if ${DBHISTORY:-true}; then
 # ******************************************************************************************** #
 
     __dbhist_sqlite <<-END
-INSERT INTO history(hist_id, epoch, cmd, ppid, status, exit_status, pwd, salt)
+INSERT INTO history(hist_id, epoch, cmd, ppid, exit_status, pwd, salt)
 VALUES(
   "${num}",
   "${epoch}",
   "${command//\"/\"\"}",
   "${PPID}",
-  "Status",
   "${Last_Command}",
   "${pwd//\"/\"\"}",
   "${__dbhist_salt}"
@@ -463,9 +461,7 @@ END
      done
 
      if ((exit_stat)); then
-       ExitStatus="substr('      '||max(status),-6) ||
-       ': ' ||
-       substr('      '||max(exit_status),-4) ||
+       ExitStatus="substr('      '||max(exit_status),-4) ||
        ' | ' ||"
      fi
 
@@ -478,9 +474,9 @@ END
        SELECT
        substr('      '||max(id),-6) ||
          ' | ' ||
-         datetime(max(epoch), 'unixepoch', 'localtime') ||
-         ' | ' ||
          substr('      '||count(*),-6) ||
+         ' | ' ||
+         datetime(max(epoch), 'unixepoch', 'localtime') ||
          ' | ' ||
          $ExitStatus
          $pwd_q
