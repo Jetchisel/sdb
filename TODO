@@ -10,5 +10,10 @@ last month
 last year
 
 
+Other goals:
+
 Add exclude commands and directory for the search.
 Run command that correspond to the first column.
+
+Add a custom header using printf
+printf '%s\n' "-------+""--------+""---------------------+""------+""----------------+""------------"

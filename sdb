@@ -2,7 +2,7 @@
 #: Title           : sdb                                                                       #
 #: Sypnosis        : sdb [OPTIONS]... [QUERY]...                                               #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Thu 21 Dec 2017 18:33:32 PM +08  /  Thu Dec 21 10:33:32 UTC 2017          #
+#: Last Edit       : Sat 23 Dec 2017 05:09:05 AM +08  /  Fri Dec 22 21:09:05 UTC 2017          #
 #: License         : MIT                                                                       #
 #: Version         : 1.4.0                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
@@ -197,6 +197,7 @@ if "${SDB_HISTORY:-true}"; then
     local epoch=""
     local pwd=$PWD
     local command=""
+    local command__=""
     local first=""
     local secondtemp0=""
     local secondtemp1=""
@@ -234,21 +235,23 @@ if "${SDB_HISTORY:-true}"; then
     command=$third
 
 # ******************************************************************************************** #
-#           Insert data from the variables to the sqlite3 database using a heredoc.            #
+#             Insert data into the database using a while read loop and a heredoc.             #
 # ******************************************************************************************** #
 
+while read -r command__ <&8; do
     __sdb_sqlite <<-END
 INSERT INTO history(hist_id, epoch, cmd, ppid, exit_status, pwd, salt)
 VALUES(
-  "${num}",
-  "${epoch}",
-  "${command//\"/\"\"}",
-  "${PPID}",
-  "${Last_Command}",
-  "${pwd//\"/\"\"}",
-  "${__sdb_salt}"
-);
+   "${num}",
+   "${epoch}",
+   "${command__//\"/\"\"}",
+   "${PPID}",
+   "${Last_Command}",
+   "${pwd//\"/\"\"}",
+   "${__sdb_salt}"
+ );
 END
+done 8<<< "$command"
 
 }
 
@@ -271,6 +274,8 @@ END
      local pwd=0
      local zero=0
      local nonzero=0
+     local pwd_q=""
+     local separator=""
      local ExitStatus=""
      local pathquery=""
      local rpathquery=""
@@ -342,11 +347,11 @@ END
            ____ShowHelp____
            return
            ;;
-         --max|-m)
+         --max-count|-m)
            shift
            max=${1:?option requires value}
            if [[ $max != +([0-9]) ]]; then
-             printf '%s: %s\n' "${BASH_SOURCE##*/}" 'Maxlimit should be a number!' >&2
+             printf '%s: %s\n' "${BASH_SOURCE##*/}" 'Max count should be a number!' >&2
              return 1
            fi
            ;;
@@ -447,9 +452,14 @@ END
        ' | ' ||"
      fi
 
-     pwd_q=""
+     if [[ -n $DISPLAY ]]; then
+       separator=" ── "
+     else
+       separator=" > "
+     fi
+
      if ((pwd)); then
-       pwd_q='pwd || " > " ||'
+       pwd_q="pwd || \"$separator\" ||"
      fi
 
      first_sql_commands="
@@ -509,7 +519,7 @@ END
      case $location in
        here)
          sql_commands+=("AND (pwd == \"$pwd_l\") ")
-         ;;
+        ;;
        under)
          pwd_l=${pwd_l//%/\%}
          pwd_l=${pwd_l//_/\_}
@@ -562,6 +572,7 @@ END
      if ((verbose)); then
        printf '%s\n' "database: $__sdb_file" 'sql:' "${sql_commands[*]}" "${blank_line:-""}"
      fi
+
 
      __sdb_sqlite < <(printf '%s ' "${sql_commands[@]}")
   }
