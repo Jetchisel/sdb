@@ -2,12 +2,12 @@
 #: Title           : sdb                                                                       #
 #: Sypnosis        : sdb [OPTIONS]... [QUERY]...                                               #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Sat 23 Dec 2017 05:09:05 AM +08  /  Fri Dec 22 21:09:05 UTC 2017          #
+#: Last Edit       : Sat 23 Dec 2017 18:09:30 PM +08  /  Sat Dec 23 10:09:30 UTC 2017          #
 #: License         : MIT                                                                       #
 #: Version         : 1.4.0                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
 #: Description     : log bash_history in a database (A fork of dbhist.sh from Dennis Gladkikh) #
-#: Options         : [abcehlmnpsuvwzHS]                                                        #
+#: Options         : [abdehlmnprsuvwzHS]                                                       #
 #: Home Page       :                                                                           #
 #: ExtComm         : sqlite3                                                                   #
 # ============================================================================================ #
@@ -100,7 +100,7 @@ Long options that takes an argument also supports the following syntax:
 
 Short options that does not take an argument ca be joined as one command:
 
-    -adlsvz
+    -adlsv
 
 A newly open shell does not have any commands to show
 unless the -a option is specified, which defaults to
@@ -112,8 +112,6 @@ The 3rd column shows the date and time of the executed commands.
 The 4rth column which is specified by the -l option shows the exit status.
 The 5th column which is specified by the -d option shows the pwd.
 The last column is/are the executed commands. separated by a > from the path column.
-
- 1rst | 2nd | 3rd | 4rth | 5th > last
 
 NOTE:
   Not all commands that exited with a non-zero is a failure, likewise not all commands
@@ -162,6 +160,7 @@ if "${SDB_HISTORY:-true}"; then
 
   __sdb_prompt() {
     Last_Command=$?
+
     if ((!__sdb_initialized)); then
       __sdb_init
       __sdb_initialized=1
@@ -274,6 +273,12 @@ done 8<<< "$command"
      local pwd=0
      local zero=0
      local nonzero=0
+     local dir0=""
+     local dir1=""
+     local dir2=""
+     local stat0=""
+     local stat1=""
+     local stat2=""
      local pwd_q=""
      local separator=""
      local ExitStatus=""
@@ -285,6 +290,12 @@ done 8<<< "$command"
      local location=""
      local optstring=""
      local first_sql_commands=""
+     local comm0='----------------+'
+     local comm1='   command     |'
+     local comm2='----------------+'
+     local def0='+-------+--------+---------------------+'
+     local def1='|hist_id| count  |      date/time      |'
+     local def2='+-------+--------+---------------------+'
 
 # ******************************************************************************************** #
 #                      Getops from scratch, by: D.J. Mills aka e36freak.                       #
@@ -326,7 +337,7 @@ done 8<<< "$command"
 
      if (( ${#options[@]} == 1 )); then
        if [[ ${options[0]} != -* ]]; then
-         printf '%s\n' "Unknown option ${options[0]}" 'Try --help'
+         printf '%s\n' "Unknown option! ${options[0]}" 'Try --help'
          return 1
        fi
      fi
@@ -351,7 +362,7 @@ done 8<<< "$command"
            shift
            max=${1:?option requires value}
            if [[ $max != +([0-9]) ]]; then
-             printf '%s: %s\n' "${BASH_SOURCE##*/}" 'Max count should be a number!' >&2
+             printf '%s: %s\n' "${BASH_SOURCE##*/}" 'Maxlimit should be a number!' >&2
              return 1
            fi
            ;;
@@ -436,7 +447,7 @@ done 8<<< "$command"
            break
            ;;
          *)
-           printf '%s: %s: %s\n' "${BASH_SOURCE##*/}" "Unknown option" "$1" >&2
+           printf '%s: %s: %s\n' "${BASH_SOURCE##*/}" "Unknown option!" "$1" >&2
            return 1
            ;;
        esac
@@ -450,10 +461,13 @@ done 8<<< "$command"
      if ((exit_stat)); then
        ExitStatus="substr('      '||max(exit_status),-4) ||
        ' | ' ||"
+       stat0='------+'
+       stat1='status|'
+       stat2='------+'
      fi
 
      if [[ -n $DISPLAY ]]; then
-       separator=" ── "
+       separator="  "
      else
        separator=" > "
      fi
@@ -464,7 +478,7 @@ done 8<<< "$command"
 
      first_sql_commands="
        SELECT
-       substr('      '||max(id),-6) ||
+       substr('      '||max(id),-7) ||
          ' | ' ||
          substr('      '||count(*),-6) ||
          ' | ' ||
@@ -519,7 +533,7 @@ done 8<<< "$command"
      case $location in
        here)
          sql_commands+=("AND (pwd == \"$pwd_l\") ")
-        ;;
+         ;;
        under)
          pwd_l=${pwd_l//%/\%}
          pwd_l=${pwd_l//_/\_}
@@ -565,14 +579,18 @@ done 8<<< "$command"
 
      if ((pwd)); then
        sql_commands+=(", pwd ")
+       dir0='----------------+'
+       dir1="   directory    |${separator// }"
+       dir2='----------------+'
      fi
 
      sql_commands+=("ORDER BY max(id) DESC LIMIT $max ;")
 
      if ((verbose)); then
-       printf '%s\n' "database: $__sdb_file" 'sql:' "${sql_commands[*]}" "${blank_line:-""}"
+       printf '%s\n' "${BASH_SOURCE##*/} $__sdb_file"  "${sql_commands[*]}" "${blank_line:-""}"
      fi
 
+     printf  '\n%s\n%s\n%s\n' "$def0$stat0$dir0$comm0" "$def1$stat1$dir1$comm1" "$def2$stat2$dir2$comm2"
 
      __sdb_sqlite < <(printf '%s ' "${sql_commands[@]}")
   }
