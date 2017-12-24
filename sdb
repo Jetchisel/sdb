@@ -2,7 +2,7 @@
 #: Title           : sdb                                                                       #
 #: Sypnosis        : sdb [OPTIONS]... [QUERY]...                                               #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Sat 23 Dec 2017 18:09:30 PM +08  /  Sat Dec 23 10:09:30 UTC 2017          #
+#: Last Edit       : Mon 25 Dec 2017 00:27:53 AM +08  /  Sun Dec 24 16:27:53 UTC 2017          #
 #: License         : MIT                                                                       #
 #: Version         : 1.4.0                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
@@ -204,7 +204,7 @@ if "${SDB_HISTORY:-true}"; then
     local thirdtemp0=""
     local third=""
 
-    if [[ $OLDPWD !=  $__sdb_oldpwd ]]; then
+    if [[ $OLDPWD !=  "$__sdb_oldpwd" ]]; then
       pwd=$OLDPWD
       __sdb_oldpwd=$OLDPWD
     fi
@@ -291,7 +291,7 @@ done 8<<< "$command"
      local optstring=""
      local first_sql_commands=""
      local comm0='----------------+'
-     local comm1='   command     |'
+     local comm1='   command      |'
      local comm2='----------------+'
      local def0='+-------+--------+---------------------+'
      local def1='|hist_id| count  |      date/time      |'
@@ -467,7 +467,7 @@ done 8<<< "$command"
      fi
 
      if [[ -n $DISPLAY ]]; then
-       separator="  "
+       separator=" ▶ "
      else
        separator=" > "
      fi
@@ -582,6 +582,7 @@ done 8<<< "$command"
        dir0='----------------+'
        dir1="   directory    |${separator// }"
        dir2='----------------+'
+       comm1='   command     |'
      fi
 
      sql_commands+=("ORDER BY max(id) DESC LIMIT $max ;")
