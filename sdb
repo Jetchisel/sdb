@@ -2,14 +2,14 @@
 #: Title           : sdb                                                                       #
 #: Sypnosis        : sdb [OPTIONS]... [QUERY]...                                               #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Mon 25 Dec 2017 00:27:53 AM +08  /  Sun Dec 24 16:27:53 UTC 2017          #
+#: Last Edit       : Tue 02 Jan 2018 10:15:07 AM +08  /  Tue Jan  2 02:15:07 UTC 2018          #
 #: License         : MIT                                                                       #
-#: Version         : 1.4.0                                                                     #
+#: Version         : 1.4.2                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
 #: Description     : log bash_history in a database (A fork of dbhist.sh from Dennis Gladkikh) #
-#: Options         : [abdehlmnprsuvwzHS]                                                       #
+#: Options         : [abdehlmnprsuvwzEHS]                                                      #
 #: Home Page       :                                                                           #
-#: ExtComm         : sqlite3                                                                   #
+#: ExtComm         : sqlite3,tput                                                              #
 # ============================================================================================ #
 
 ################################################################################################
@@ -91,8 +91,9 @@ OPTIONS:
   -u, --under             Reduce search only for current and under pwd.
   -v, --verbose           Verbose output (shows sql command).
   -z, --zero              Show commands that exited with zero status.
+  -E, --execute-id n      Execute the command with the n id.
   -H, --here              Reduce search only for current pwd.
-  -S, --shell             Access to the sqlite3 shell.
+  -S, --shell             Access to the sqlite3 shell and load the shell database.
 
 Long options that takes an argument also supports the following syntax:
 
@@ -104,7 +105,7 @@ Short options that does not take an argument ca be joined as one command:
 
 A newly open shell does not have any commands to show
 unless the -a option is specified, which defaults to
-100 lines, unless the -l option is specified.
+100 lines, unless the -m option is specified.
 
 The 1rst column shows only the increment of all the executed commands.
 The 2nd column shows how many times the commands has been executed.
@@ -138,7 +139,7 @@ if "${SDB_HISTORY:-true}"; then
   __sdb_file=${SDB_DATABASE:-$HOME/.bash_history.sqlite}
 
   __sdb_sqlite() {
-    sqlite3 "$__sdb_file"
+    sqlite3 "$__sdb_file" "$@"
   }
 
   __sdb_init() {
@@ -213,7 +214,7 @@ if "${SDB_HISTORY:-true}"; then
 # Set IFS to a newline, use reads -d option, so multiline command such a heredocs is captured. #
 # ******************************************************************************************** #
 
-    IFS=$'\n' read -u 5 -rd ''  formated_history 5< <(history 1)
+    IFS=$'\n' read -u 5 -rd '' formated_history 5< <(history 1)
 
 # ******************************************************************************************** #
 #   Parameter expansion to extract the data/info from "history 1" and split it into 3 parts.   #
@@ -241,13 +242,13 @@ while read -r command__ <&8; do
     __sdb_sqlite <<-END
 INSERT INTO history(hist_id, epoch, cmd, ppid, exit_status, pwd, salt)
 VALUES(
-   "${num}",
-   "${epoch}",
+   "$num",
+   "$epoch",
    "${command__//\"/\"\"}",
-   "${PPID}",
-   "${Last_Command}",
+   "$PPID",
+   "$Last_Command",
    "${pwd//\"/\"\"}",
-   "${__sdb_salt}"
+   "$__sdb_salt"
  );
 END
 done 8<<< "$command"
@@ -265,6 +266,7 @@ done 8<<< "$command"
      local begin=0
      local end=0
      local exit_stat=0
+     local execute=0
      local self=0
      local whole_line=0
      local path=0
@@ -273,9 +275,12 @@ done 8<<< "$command"
      local pwd=0
      local zero=0
      local nonzero=0
+     local answer
      local dir0=""
      local dir1=""
      local dir2=""
+     local execute_var=""
+     local execute_var0=""
      local stat0=""
      local stat1=""
      local stat2=""
@@ -290,22 +295,25 @@ done 8<<< "$command"
      local location=""
      local optstring=""
      local first_sql_commands=""
+     local G=""
+     local R=""
+     G=$(tput bold)
+     R=$(tput sgr0)
      local comm0='----------------+'
-     local comm1='   command      |'
+     local comm1='   COMMAND      |'
      local comm2='----------------+'
      local def0='+-------+--------+---------------------+'
-     local def1='|hist_id| count  |      date/time      |'
+     local def1='|  ID   | COUNT  |      DATE/TIME      |'
      local def2='+-------+--------+---------------------+'
 
 # ******************************************************************************************** #
-#                      Getops from scratch, by: D.J. Mills aka e36freak.                       #
+# Getops from scratch by D.J. Mills, https://github.com/e36freak/templates/blob/master/options #
 # ******************************************************************************************** #
 
-     declare -a options
-
-     optstring=adsulnvzHSb:e:m:w:r:p:
+     optstring=adsulnvzHSb:e:m:w:r:p:E:
 
      unset options
+
      while (($#)); do
        case $1 in
 
@@ -315,7 +323,6 @@ done 8<<< "$command"
              c=${1:i:1}
 
              options+=("-$c")
-
 
              if [[ $optstring = *"$c:"* && ${1:i+1} ]]; then
                options+=("${1:i+1}")
@@ -337,7 +344,7 @@ done 8<<< "$command"
 
      if (( ${#options[@]} == 1 )); then
        if [[ ${options[0]} != -* ]]; then
-         printf '%s\n' "Unknown option! ${options[0]}" 'Try --help'
+         printf '%s: %s\n%s\n' "Unknown option" "$G${options[0]}$R" 'Try --help' >&2
          return 1
        fi
      fi
@@ -360,11 +367,14 @@ done 8<<< "$command"
            ;;
          --max-count|-m)
            shift
-           max=${1:?option requires value}
-           if [[ $max != +([0-9]) ]]; then
+           if [[ -z $1 ]]; then
+             printf '%s: %s\n' "${BASH_SOURCE##*/}" "Maxlimit requires a value!" >&2
+             return 1
+           elif [[ $1 != +([0-9]) ]]; then
              printf '%s: %s\n' "${BASH_SOURCE##*/}" 'Maxlimit should be a number!' >&2
              return 1
            fi
+           max=$1
            ;;
          --all|-a)
            all=1
@@ -379,31 +389,47 @@ done 8<<< "$command"
            shift
            begin=1
            if ((whole_line)); then
-             printf '%s\n' 'Conflicting options!' >&2
+             printf '%s: %s\n' "${BASH_SOURCE##*/}" 'Conflicting options specified!' >&2
              return 1
            fi
-           query_begin=${1:?requires value}
+           if [[ -z $1 ]]; then
+             printf '%s: %s\n' "${BASH_SOURCE##*/}" "Begin requires a value!" >&2
+             return 1
+           fi
+           query_begin=$1
            ;;
          --end-with|-e)
            shift
            end=1
            if ((whole_line)); then
-             printf '%s\n' 'Conflicting options!' >&2
+             printf '%s: %s\n' "${BASH_SOURCE##*/}" 'Conflicting options specified!' >&2
              return 1
            fi
-           query_end=${1:?requires value}
+           if [[ -z $1 ]]; then
+             printf '%s: %s\n' "${BASH_SOURCE##*/}" 'End requires a value!' >&2
+             return 1
+           fi
+           query_end=$1
            ;;
          --recurse-path|-r)
            shift
            rpath=1
            pwd=1
-           rpathquery=${1:?requires value}
+           if [[ -z $1 ]]; then
+             printf '%s: %s\n' "${BASH_SOURCE##*/}" 'Path requires a value!' >&2
+             return 1
+           fi
+           rpathquery=$1
            ;;
          --path|-p)
            shift
            path=1
+           if [[ -z $1 ]]; then
+             printf '%s: %s\n' "${BASH_SOURCE##*/}" 'Path requires a value!' >&2
+             return 1
+           fi
            pwd=1
-           pathquery=${1:?requires value}
+           pathquery=$1
            ;;
          --verbose|-v)
            verbose=1
@@ -412,10 +438,26 @@ done 8<<< "$command"
            shift
            whole_line=1
            if ((begin || end)); then
-             printf '%s\n' 'Conflicting options!' >&2
+             printf '%s: %s\n' "${BASH_SOURCE##*/}" 'Conflicting options specified!' >&2
              return 1
            fi
-           query_whole=${1:?requires value}
+           if [[ -z $1 ]]; then
+             printf '%s: %s\n' "${BASH_SOURCE##*/}" 'Word requires a value!' >&2
+             return 1
+           fi
+           query_whole=$1
+           ;;
+         --execute-id|-E)
+           shift
+           execute=1
+           if [[ -z $1 ]]; then
+             printf '%s: %s\n' "${BASH_SOURCE##*/}" 'Id requires a value!' >&2
+             return 1
+           elif [[ $1 != +([0-9]) ]]; then
+             printf '%s: %s\n' "${BASH_SOURCE##*/}" 'Id should be a number!' >&2
+             return 1
+           fi
+           execute_var=$1
            ;;
          --here|-H)
            if [[ -n $location || -n $pathquery ]]; then
@@ -447,12 +489,46 @@ done 8<<< "$command"
            break
            ;;
          *)
-           printf '%s: %s: %s\n' "${BASH_SOURCE##*/}" "Unknown option!" "$1" >&2
+           printf '%s: %s: %s\n' "${BASH_SOURCE##*/}" "Unknown option" "$G$1$R" >&2
            return 1
            ;;
        esac
        shift
      done
+
+# ******************************************************************************************** #
+#            The separator character to print, depending on the value of $DISPLAY.             #
+# ******************************************************************************************** #
+
+     if [[ -n $DISPLAY ]]; then
+       separator=" ▶ "
+     else
+       separator=" > "
+     fi
+
+# ******************************************************************************************** #
+# Run the command with the corresponding ID, with the all time favorite builtin command: EVAL  #
+# ******************************************************************************************** #
+
+     if ((execute)); then
+       execute_var0=$(__sdb_sqlite "SELECT cmd from history WHERE 1 AND ( id = $execute_var );")
+       if [[ -z $execute_var0 ]]; then
+         printf '%s\n' "${BASH_SOURCE##*/}: ID value is either out of range or it has no corresponding command!" >&2
+         return 1
+       fi
+       printf -v are_you_sure '%s\n%s' "Do you really want to run: $G$execute_var0$R" "[p/y/n]${separator// } "
+
+       read -rp "$are_you_sure" answer
+       case $answer in
+         Y|y) eval "$execute_var0" && history -s "$execute_var0";;
+         N|n) return;;
+         P|p) printf '\n%s\n' "$execute_var0";;
+         *) printf '%s: %s\n' 'Unknown answer' "$G$answer$R" >&2
+           return 1
+           ;;
+       esac
+       return
+     fi
 
 # ******************************************************************************************** #
 #      First sqlite3 command, just to print out a formatted output separated by a pipe.        #
@@ -462,14 +538,8 @@ done 8<<< "$command"
        ExitStatus="substr('      '||max(exit_status),-4) ||
        ' | ' ||"
        stat0='------+'
-       stat1='status|'
+       stat1='STATUS|'
        stat2='------+'
-     fi
-
-     if [[ -n $DISPLAY ]]; then
-       separator=" ▶ "
-     else
-       separator=" > "
      fi
 
      if ((pwd)); then
@@ -580,9 +650,9 @@ done 8<<< "$command"
      if ((pwd)); then
        sql_commands+=(", pwd ")
        dir0='----------------+'
-       dir1="   directory    |${separator// }"
+       dir1="   DIRECTORY    |${separator// }"
        dir2='----------------+'
-       comm1='   command     |'
+       comm1='   COMMAND     |'
      fi
 
      sql_commands+=("ORDER BY max(id) DESC LIMIT $max ;")
