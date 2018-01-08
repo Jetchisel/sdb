@@ -2,14 +2,15 @@
 #: Title           : sdb                                                                       #
 #: Sypnosis        : sdb [OPTIONS]... [QUERY]...                                               #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Tue 02 Jan 2018 10:15:07 AM +08  /  Tue Jan  2 02:15:07 UTC 2018          #
+#: Last Edit       : Mon 08 Jan 2018 10:03:37 AM +08  /  Mon Jan  8 02:03:37 UTC 2018          #
 #: License         : MIT                                                                       #
-#: Version         : 1.4.2                                                                     #
+#: Version         : 1.4.4                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
 #: Description     : log bash_history in a database (A fork of dbhist.sh from Dennis Gladkikh) #
 #: Options         : [abdehlmnprsuvwzEHS]                                                      #
-#: Home Page       :                                                                           #
-#: ExtComm         : sqlite3,tput                                                              #
+#: Home Page       : https://github.com/Jetchisel/sdb                                          #
+#: ExtComm         : base64,dd,sqlite3,tput                                                    #
+#: Copyright       : Jason V. Ferrer 2017 based on dbhist.                                     #
 # ============================================================================================ #
 
 ################################################################################################
@@ -18,7 +19,6 @@
 #                                                                                              #
 # Further resources on the MIT License                                                         #
 # Copyright 2017 Denis Gladkikh (https://www.outcoldman.com/en/archive/2017/07/19/dbhist/)     #
-#                                                                                              #
 # Permission is hereby granted, free of charge, to any person obtaining a copy                 #
 # of this software and associated documentation files (the "Software"), to deal                #
 # in the Software without restriction, including without limitation the rights                 #
@@ -36,6 +36,8 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,                #
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                #
 # SOFTWARE.                                                                                    #
+#                                                                                              #
+# Copyright 2017 Jason V. Ferrer based on above.                                               #
 #==============================================================================================#
 # To use it, just source the file `source sdb`                                                 #
 #                                                                                              #
@@ -127,7 +129,15 @@ NOTE:
 
 if "${SDB_HISTORY:-true}"; then
 
-  __sdb_salt=$RANDOM$RANDOM
+  if ! type -P dd >/dev/null; then
+      printf '%s: %s\n' "${BASH_SOURCE##*/}" "dd is either not installed or it is not in your PATH!" >&2
+      return 1
+   elif ! type -P base64 >/dev/null; then
+      printf '%s: %s\n' "${BASH_SOURCE##*/}" "base64 is either not installed or it is not in your PATH!" >&2
+      return 1
+   else
+      __sdb_salt=$(command dd if=/dev/urandom bs=32 count=1 2>/dev/null | command base64)
+  fi
 
   __sdb_initialized=0
 
@@ -138,9 +148,14 @@ if "${SDB_HISTORY:-true}"; then
 
   __sdb_file=${SDB_DATABASE:-$HOME/.bash_history.sqlite}
 
-  __sdb_sqlite() {
-    sqlite3 "$__sdb_file" "$@"
-  }
+  if type -P sqlite3 >/dev/null; then
+    __sdb_sqlite() {
+      command sqlite3 "$__sdb_file" "$@"
+    }
+  else
+    printf '%s: %s\n' "${BASH_SOURCE##*/}" 'sqlite3 is either not installed or it is not in your PATH' >&2
+    return 1
+  fi
 
   __sdb_init() {
     local sql='CREATE TABLE history (
@@ -151,7 +166,7 @@ if "${SDB_HISTORY:-true}"; then
     ppid INTEGER,
     exit_status INTEGER,
     pwd TEXT,
-    salt INTEGER
+    salt TEXT
     );'
 
     if [[ ! -f "$__sdb_file" ]]; then
@@ -191,19 +206,13 @@ if "${SDB_HISTORY:-true}"; then
     fi
 
     local IFS
-    local line
-    local formated_history=""
+    local recent_command=""
     local num=""
     local epoch=""
     local pwd=$PWD
     local command=""
     local command__=""
-    local first=""
-    local secondtemp0=""
-    local secondtemp1=""
-    local second=""
-    local thirdtemp0=""
-    local third=""
+    local regexp=""
 
     if [[ $OLDPWD !=  "$__sdb_oldpwd" ]]; then
       pwd=$OLDPWD
@@ -214,25 +223,14 @@ if "${SDB_HISTORY:-true}"; then
 # Set IFS to a newline, use reads -d option, so multiline command such a heredocs is captured. #
 # ******************************************************************************************** #
 
-    IFS=$'\n' read -u 5 -rd '' formated_history 5< <(history 1)
+    IFS=$'\n' read -u6 -rd '' recent_command 6< <(history 1)
+    regexp='[[:space:]]+([[:digit:]]+)[[:space:]]+([[:digit:]]+)[[:space:]](.+)'
 
-# ******************************************************************************************** #
-#   Parameter expansion to extract the data/info from "history 1" and split it into 3 parts.   #
-# ******************************************************************************************** #
-
-    read -u 6 -r line 6<<< "$formated_history"
-    first="${line%%[[:space:]]*}"
-    secondtemp0="${line##*"${first}"}"
-    secondtemp1=${secondtemp0##*( )}
-    second="${secondtemp1%%[[:space:]]*}"
-
-    IFS=$'\n' read -u 7 -rd '' line  7<<< "$formated_history"
-    thirdtemp0="${line##*"${second}"}"
-    third="${thirdtemp0##*( )}"
-
-    num=$first
-    epoch=$second
-    command=$third
+    if [[ $recent_command =~ $regexp ]]; then
+      num=${BASH_REMATCH[1]}
+      epoch=${BASH_REMATCH[2]}
+      command=${BASH_REMATCH[3]}
+    fi
 
 # ******************************************************************************************** #
 #             Insert data into the database using a while read loop and a heredoc.             #
@@ -297,14 +295,17 @@ done 8<<< "$command"
      local first_sql_commands=""
      local G=""
      local R=""
-     G=$(tput bold)
-     R=$(tput sgr0)
      local comm0='----------------+'
      local comm1='   COMMAND      |'
      local comm2='----------------+'
      local def0='+-------+--------+---------------------+'
      local def1='|  ID   | COUNT  |      DATE/TIME      |'
      local def2='+-------+--------+---------------------+'
+
+     if type -P tput >/dev/null; then
+       G=$(command tput bold)
+       R=$(command tput sgr0)
+     fi
 
 # ******************************************************************************************** #
 # Getops from scratch by D.J. Mills, https://github.com/e36freak/templates/blob/master/options #
@@ -454,7 +455,7 @@ done 8<<< "$command"
              printf '%s: %s\n' "${BASH_SOURCE##*/}" 'Id requires a value!' >&2
              return 1
            elif [[ $1 != +([0-9]) ]]; then
-             printf '%s: %s\n' "${BASH_SOURCE##*/}" 'Id should be a number!' >&2
+             printf '%s: %s\n' "${BASH_SOURCE##*/}" "Id $G$1$R should be a number!" >&2
              return 1
            fi
            execute_var=$1
@@ -513,16 +514,22 @@ done 8<<< "$command"
      if ((execute)); then
        execute_var0=$(__sdb_sqlite "SELECT cmd from history WHERE 1 AND ( id = $execute_var );")
        if [[ -z $execute_var0 ]]; then
-         printf '%s\n' "${BASH_SOURCE##*/}: ID value is either out of range or it has no corresponding command!" >&2
+         printf '%s\n' "${BASH_SOURCE##*/}: Id $G$execute_var$R is either out of range or it has no corresponding command!" >&2
          return 1
        fi
+
        printf -v are_you_sure '%s\n%s' "Do you really want to run: $G$execute_var0$R" "[p/y/n]${separator// } "
 
        read -rp "$are_you_sure" answer
        case $answer in
-         Y|y) eval "$execute_var0" && history -s "$execute_var0";;
-         N|n) return;;
-         P|p) printf '\n%s\n' "$execute_var0";;
+         Y|y)
+           history -s "$execute_var0"
+           eval "$execute_var0"
+           return $?
+           ;;
+         N|n) : ;;
+         P|p) printf '\n%s\n' "$execute_var0"
+           ;;
          *) printf '%s: %s\n' 'Unknown answer' "$G$answer$R" >&2
            return 1
            ;;
@@ -558,7 +565,7 @@ done 8<<< "$command"
          $pwd_q
        cmd
        FROM history
-       WHERE 1 "
+       WHERE 1"
 
 # ******************************************************************************************** #
 #                  Assign the sqlite3 commands inside the sql_commands array.                  #
@@ -573,11 +580,11 @@ done 8<<< "$command"
 # ******************************************************************************************** #
 
      if ((!all)); then
-       sql_commands+=("AND (salt=$__sdb_salt AND ppid=$PPID) ")
+       sql_commands+=("AND (salt=\"$__sdb_salt\" AND ppid=$PPID)")
      fi
 
      if ((!self)); then
-       sql_commands+=("AND (cmd != 'sdb' AND cmd NOT LIKE 'sdb %') ")
+       sql_commands+=("AND (cmd != 'sdb' AND cmd NOT LIKE 'sdb %')")
      fi
 
      if ((begin)); then
@@ -645,17 +652,17 @@ done 8<<< "$command"
        sql_commands+=("AND exit_status > '0' ")
      fi
 
-     sql_commands+=("GROUP BY cmd, exit_status ")
+     sql_commands+=("GROUP BY cmd,exit_status")
 
      if ((pwd)); then
-       sql_commands+=(", pwd ")
+       sql_commands+=(,pwd)
        dir0='----------------+'
        dir1="   DIRECTORY    |${separator// }"
        dir2='----------------+'
        comm1='   COMMAND     |'
      fi
 
-     sql_commands+=("ORDER BY max(id) DESC LIMIT $max ;")
+     sql_commands+=("ORDER BY max(id) DESC LIMIT $max;")
 
      if ((verbose)); then
        printf '%s\n' "${BASH_SOURCE##*/} $__sdb_file"  "${sql_commands[*]}" "${blank_line:-""}"
