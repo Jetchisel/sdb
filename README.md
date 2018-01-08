@@ -23,12 +23,15 @@ tput
 ### Installing
 
 ```
-git clone sdb
+git clone https://github.com/Jetchisel/sdb
 ```
-
+```
+cd sdb/
+```
 ```
 source sdb
 ```
+Or just download the zip file and unpack it somewhere.
 
 ## Author
 
