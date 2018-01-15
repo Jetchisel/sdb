@@ -2,7 +2,7 @@
 #: Title           : sdb                                                                       #
 #: Sypnosis        : sdb [OPTIONS]... [QUERY]...                                               #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Mon 08 Jan 2018 10:03:37 AM +08  /  Mon Jan  8 02:03:37 UTC 2018          #
+#: Last Edit       : Mon 15 Jan 2018 01:34:38 AM +08  /  Sun Jan 14 17:34:38 UTC 2018          #
 #: License         : MIT                                                                       #
 #: Version         : 1.4.4                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
@@ -238,16 +238,12 @@ if "${SDB_HISTORY:-true}"; then
 
 while read -r command__ <&8; do
     __sdb_sqlite <<-END
-INSERT INTO history(hist_id, epoch, cmd, ppid, exit_status, pwd, salt)
+INSERT INTO history(
+    hist_id, epoch, cmd, ppid, exit_status, pwd, salt
+  )
 VALUES(
-   "$num",
-   "$epoch",
-   "${command__//\"/\"\"}",
-   "$PPID",
-   "$Last_Command",
-   "${pwd//\"/\"\"}",
-   "$__sdb_salt"
- );
+    "$num", "$epoch", "${command__//\"/\"\"}", "$PPID", "$Last_Command", "${pwd//\"/\"\"}", "$__sdb_salt"
+  );
 END
 done 8<<< "$command"
 
@@ -369,10 +365,10 @@ done 8<<< "$command"
          --max-count|-m)
            shift
            if [[ -z $1 ]]; then
-             printf '%s: %s\n' "${BASH_SOURCE##*/}" "Maxlimit requires a value!" >&2
+             printf '%s: %s\n' "${BASH_SOURCE##*/}" "Max count requires a value!" >&2
              return 1
            elif [[ $1 != +([0-9]) ]]; then
-             printf '%s: %s\n' "${BASH_SOURCE##*/}" 'Maxlimit should be a number!' >&2
+             printf '%s: %s\n' "${BASH_SOURCE##*/}" "Max count $G$1$R should be a number!" >&2
              return 1
            fi
            max=$1
