@@ -2,9 +2,9 @@
 #: Title           : sdb                                                                       #
 #: Sypnosis        : sdb [OPTIONS]... [QUERY]...                                               #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Mon 15 Jan 2018 01:34:38 AM +08  /  Sun Jan 14 17:34:38 UTC 2018          #
+#: Last Edit       : Fri 19 Jan 2018 04:42:49 AM +08  /  Thu Jan 18 20:42:49 UTC 2018          #
 #: License         : MIT                                                                       #
-#: Version         : 1.4.4                                                                     #
+#: Version         : 1.6.4                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
 #: Description     : log bash_history in a database (A fork of dbhist.sh from Dennis Gladkikh) #
 #: Options         : [abdehlmnprsuvwzEHS]                                                      #
@@ -60,6 +60,18 @@
 # ******************************************************************************************** #
 
 shopt -s extglob
+
+exec() {
+  if [[ $1 = 'bash' ]]; then
+    history -s exec bash
+  else
+    builtin exec "$@"
+  fi
+}
+
+exit() {
+  history -s exit
+}
 
 # ******************************************************************************************** #
 #                               Function to show the help menu.                                #
@@ -122,6 +134,7 @@ NOTE:
 "
   printf '%s\n' "$help"
 }
+
 
 # ******************************************************************************************** #
 #                                      The magic starts.                                       #
@@ -247,7 +260,11 @@ VALUES(
 END
 done 8<<< "$command"
 
+  [[ $command = 'exec bash' ]] && builtin exec bash
+  [[ $command = 'exit' ]] && builtin exit
+
 }
+
 
   sdb() {
 
