@@ -2,9 +2,9 @@
 #: Title           : sdb                                                                       #
 #: Sypnosis        : sdb [OPTIONS]... [QUERY]...                                               #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Fri 19 Jan 2018 04:42:49 AM +08  /  Thu Jan 18 20:42:49 UTC 2018          #
+#: Last Edit       : Sat 27 Jan 2018 10:55:58 AM +08  /  Sat Jan 27 02:55:58 UTC 2018          #
 #: License         : MIT                                                                       #
-#: Version         : 1.6.4                                                                     #
+#: Version         : 1.6.6                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
 #: Description     : log bash_history in a database (A fork of dbhist.sh from Dennis Gladkikh) #
 #: Options         : [abdehlmnprsuvwzEHS]                                                      #
@@ -144,10 +144,10 @@ if "${SDB_HISTORY:-true}"; then
 
   if ! type -P dd >/dev/null; then
       printf '%s: %s\n' "${BASH_SOURCE##*/}" "dd is either not installed or it is not in your PATH!" >&2
-      return 1
+      return 127
    elif ! type -P base64 >/dev/null; then
       printf '%s: %s\n' "${BASH_SOURCE##*/}" "base64 is either not installed or it is not in your PATH!" >&2
-      return 1
+      return 127
    else
       __sdb_salt=$(command dd if=/dev/urandom bs=32 count=1 2>/dev/null | command base64)
   fi
@@ -167,7 +167,7 @@ if "${SDB_HISTORY:-true}"; then
     }
   else
     printf '%s: %s\n' "${BASH_SOURCE##*/}" 'sqlite3 is either not installed or it is not in your PATH' >&2
-    return 1
+    return 127
   fi
 
   __sdb_init() {
@@ -201,7 +201,7 @@ if "${SDB_HISTORY:-true}"; then
         printf '%s: %s\n' "${BASH_SOURCE##*/}" "It looks like $__sdb_file does not exists, please verify it." >&2
         printf '%s: %s\n' "${BASH_SOURCE##*/}" "run: file $__sdb_file" >&2
         __sdb_does_not_exists=1
-        return
+        return 1
       fi
     fi
 
@@ -210,7 +210,7 @@ if "${SDB_HISTORY:-true}"; then
         printf '%s: %s\n' "${BASH_SOURCE##*/}" "It looks like $__sdb_file is empty, please verify it." >&2
         printf '%s: %s\n' "${BASH_SOURCE##*/}" "run: file $__sdb_file" >&2
         __sdb_empty_data_base=1
-        return
+        return 1
       fi
     fi
 
