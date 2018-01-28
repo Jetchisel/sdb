@@ -2,9 +2,9 @@
 #: Title           : sdb                                                                       #
 #: Sypnosis        : sdb [OPTIONS]... [QUERY]...                                               #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Sat 27 Jan 2018 10:55:58 AM +08  /  Sat Jan 27 02:55:58 UTC 2018          #
+#: Last Edit       : Sun 28 Jan 2018 20:47:43 PM +08  /  Sun Jan 28 12:47:43 UTC 2018          #
 #: License         : MIT                                                                       #
-#: Version         : 1.6.6                                                                     #
+#: Version         : 1.8.6                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
 #: Description     : log bash_history in a database (A fork of dbhist.sh from Dennis Gladkikh) #
 #: Options         : [abdehlmnprsuvwzEHS]                                                      #
@@ -62,11 +62,7 @@
 shopt -s extglob
 
 exec() {
-  if [[ $1 = 'bash' ]]; then
-    history -s exec bash
-  else
-    builtin exec "$@"
-  fi
+  history -s exec "$@"
 }
 
 exit() {
@@ -220,12 +216,16 @@ if "${SDB_HISTORY:-true}"; then
 
     local IFS
     local recent_command=""
+    local latest_hist_id=""
     local num=""
     local epoch=""
     local pwd=$PWD
     local command=""
     local command__=""
     local regexp=""
+    local regexp0=""
+    local regexp1=""
+    local regexp2=""
 
     if [[ $OLDPWD !=  "$__sdb_oldpwd" ]]; then
       pwd=$OLDPWD
@@ -249,18 +249,36 @@ if "${SDB_HISTORY:-true}"; then
 #             Insert data into the database using a while read loop and a heredoc.             #
 # ******************************************************************************************** #
 
+latest_hist_id=$(( $(__sdb_sqlite 'select hist_id from history order by id desc limit 1;') + 1 ))
+
 while read -r command__ <&8; do
     __sdb_sqlite <<-END
 INSERT INTO history(
     hist_id, epoch, cmd, ppid, exit_status, pwd, salt
   )
 VALUES(
-    "$num", "$epoch", "${command__//\"/\"\"}", "$PPID", "$Last_Command", "${pwd//\"/\"\"}", "$__sdb_salt"
+    "${num:-"$latest_hist_id"}",
+    "${epoch:-"$(\date -d 'now' '+%s')"}",
+    "${command__//\"/\"\"}",
+    "$PPID",
+    "$Last_Command",
+    "${pwd//\"/\"\"}",
+    "$__sdb_salt"
   );
 END
-done 8<<< "$command"
+done 8<<< "${command:-MISSING_COMMAND}"
 
-  [[ $command = 'exec bash' ]] && builtin exec bash
+  regexp0='^(exec)[[:space:]]+(bash)$'
+  regexp1='^(exec)[[:space:]]+(bash)[[:space:]]+(.+)'
+  regexp2='^(exec)[[:space:]]+(.+)'
+
+  if [[ $command =~ $regexp0 ]]; then
+    builtin "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}"
+  elif [[ $command =~ $regexp1 ]]; then
+    builtin "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" "${BASH_REMATCH[3]}"
+  elif [[ $command =~ $regexp2 ]]; then
+    builtin "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}"
+  fi
   [[ $command = 'exit' ]] && builtin exit
 
 }

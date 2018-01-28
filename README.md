@@ -26,6 +26,8 @@ Tested on GNU tools only.
 ```
 sqlite3
 
+date
+
 dd
 
 base64
