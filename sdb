@@ -2,14 +2,14 @@
 #: Title           : sdb                                                                       #
 #: Sypnosis        : sdb [OPTIONS]... [QUERY]...                                               #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Sun 28 Jan 2018 20:47:43 PM +08  /  Sun Jan 28 12:47:43 UTC 2018          #
+#: Last Edit       : Mon 29 Jan 2018 11:23:38 AM +08  /  Mon Jan 29 03:23:38 UTC 2018          #
 #: License         : MIT                                                                       #
-#: Version         : 1.8.6                                                                     #
+#: Version         : 1.8.7                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
 #: Description     : log bash_history in a database (A fork of dbhist.sh from Dennis Gladkikh) #
 #: Options         : [abdehlmnprsuvwzEHS]                                                      #
 #: Home Page       : https://github.com/Jetchisel/sdb                                          #
-#: ExtComm         : base64,dd,sqlite3,tput                                                    #
+#: ExtComm         : base64,date,dd,sqlite3,tput                                               #
 #: Copyright       : Jason V. Ferrer 2017 based on dbhist.                                     #
 # ============================================================================================ #
 
@@ -184,7 +184,7 @@ if "${SDB_HISTORY:-true}"; then
   }
 
   __sdb_prompt() {
-    Last_Command=$?
+  Last_Command=$?
 
     if ((!__sdb_initialized)); then
       __sdb_init
@@ -282,7 +282,6 @@ done 8<<< "${command:-MISSING_COMMAND}"
   [[ $command = 'exit' ]] && builtin exit
 
 }
-
 
   sdb() {
 
