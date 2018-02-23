@@ -2,9 +2,9 @@
 #: Title           : sdb                                                                       #
 #: Sypnosis        : sdb [OPTIONS]... [QUERY]...                                               #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Mon 29 Jan 2018 11:23:38 AM +08  /  Mon Jan 29 03:23:38 UTC 2018          #
+#: Last Edit       : Fri 23 Feb 2018 20:04:50 PM +08  /  Fri Feb 23 12:04:50 UTC 2018          #
 #: License         : MIT                                                                       #
-#: Version         : 1.8.7                                                                     #
+#: Version         : 1.8.8                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
 #: Description     : log bash_history in a database (A fork of dbhist.sh from Dennis Gladkikh) #
 #: Options         : [abdehlmnprsuvwzEHS]                                                      #
@@ -59,7 +59,15 @@
 #                       Enable extglob, just in case it is not enabled.                        #
 # ******************************************************************************************** #
 
-shopt -s extglob
+if ! shopt -q extglob; then
+  shopt -s extglob
+fi
+
+# ******************************************************************************************** #
+#                                                                                              #
+#     Functions to exec & exit so sdb can capture the commands before it can be executed.      #
+#                                                                                              #
+# ******************************************************************************************** #
 
 exec() {
   history -s exec "$@"
@@ -184,7 +192,7 @@ if "${SDB_HISTORY:-true}"; then
   }
 
   __sdb_prompt() {
-  Last_Command=$?
+    Last_Command=$?
 
     if ((!__sdb_initialized)); then
       __sdb_init
