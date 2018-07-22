@@ -2,7 +2,7 @@
 # SPDX short identifier: MIT
 
 # Further resources on the MIT License
-# Copyright 2017 Jason V. Ferrer '<jetchisel@opensuse.org>'
+# Copyright 2017-2018 Jason V. Ferrer '<jetchisel@opensuse.org>'
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal

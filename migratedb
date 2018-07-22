@@ -1,0 +1,312 @@
+#!/usr/bin/env bash
+# ============================================================================================ #
+#: Title           : migratedb                                                                 #
+#: Sypnosis        : migrated [OPTIONS] [FILE]                                                 #
+#: Date Created    : Sat 21 Jul 2018 13:41:43 PM +08  /  Sat Jul 21 05:41:43 UTC 2018          #
+#: Last Edit       : Sun 22 Jul 2018 15:55:56 PM +08  /  Sun Jul 22 07:55:56 UTC 2018          #
+#: License         : MIT                                                                       #
+#: Version         : 1.0.0                                                                     #
+#: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
+#: Description     : Add a new user_host column from the previous database/table of sdb        #
+#: Options         : [fud]                                                                     #
+#: Home Page       : https://github.com/Jetchisel/sdb                                          #
+#: ExtComm         : cp,file,mv,sqlite3                                                        #
+#: Copyright       : Jason V. Ferrer 2018                                                      #
+# ============================================================================================ #
+
+exec > >(
+  while read -r; do
+    [[ ! $REPLY ]] && continue
+    printf '[%(%Y-%m-%d %H:%M:%S)T] %s\n' -1 "$REPLY"
+  done
+) 2>&1
+
+# ******************************************************************************************** #
+#                            The script name without the pathname.                             #
+# ******************************************************************************************** #
+
+scriptname=${BASH_SOURCE##*/}
+
+# ******************************************************************************************** #
+#   Warn and die functions, for exit messages and default status or an optional exit status.   #
+# ******************************************************************************************** #
+
+warn() {
+  printf '%s\n' "${scriptname}: $*"
+}
+
+die() {
+  local st=$?
+  case $2 in
+    *[^0-9]*|'') :;;
+    *) st=$2;;
+  esac
+
+  case $st in
+    0) warn "$1" ;;
+    *) warn "$1" >&2;;
+  esac
+
+  exit "$st"
+}
+
+# ******************************************************************************************** #
+#       Parse the script itself for the value of ExtComm on the headers, first 16 lines.       #
+# ******************************************************************************************** #
+
+shopt -s extglob
+
+value=ExtComm
+regex="^#:[[:space:]]+$value[[:space:]]+:[[:space:]]+(.[^#]+)[[:space:]]+#"
+extcomm=""
+
+i=0
+while read -r line; do
+  (( i++ <= 16 )) || continue
+  [[ -n  $line ]] || continue
+  [[ $line =~ $regex ]] && extcomm=${BASH_REMATCH[1]}
+done < "$BASH_SOURCE"
+
+[[ -n "${extcomm%%*( )}" ]] && IFS=, read -ra  ExtComm <<< "${extcomm%%*( )}"
+
+shopt -u extglob
+
+# ******************************************************************************************** #
+#          Check for the required app/executable is with in your PATH, exit otherwise.         #
+# ******************************************************************************************** #
+
+Missing=()
+MissingMessage="is either not installed or it is not in your PATH!"
+ExitMessage="Please install the following: "
+
+for apps in "${ExtComm[@]}"; do
+  if ! type -P "$apps" >/dev/null; then
+    printf '%s %s\n' "$apps" "$MissingMessage" >&2
+    Missing+=("$apps")
+  fi
+done
+(( ${#Missing[@]} )) && die "$ExitMessage[${Missing[*]}] exiting now!" 127
+
+# ******************************************************************************************** #
+#                               Function to show the help menu.                                #
+# ******************************************************************************************** #
+
+ShowHelp() {
+  local IFS help
+
+IFS=$'\n' read -u6 -rd '' help 6<<<"
+USAGE: $scriptname [OPTIONS] [FILE]...
+
+Migrate an old database/table that does not have a user_hosts column from the previous sdb release
+prior to version 2.0.0.
+
+OPTIONS:
+  -h, --help                Show this help.
+  -f, --file                The database file path/location.
+  -u, --user-host           The name of the default value of user_hosts column.
+  -d, --destination         Directory where the database will be move.
+
+If the -d option is ommited the database is not move from the original location. If you're not
+doing a multi user set up then the -d option is not for you.
+"
+  printf '%s\n' "$help"
+}
+
+# ******************************************************************************************** #
+#              Check if there are no arguments given and exit with an error.                   #
+# ******************************************************************************************** #
+
+((!$#)) && die "No argument given!, Try '$scriptname --help'" 1
+
+# ******************************************************************************************** #
+#                                        The variables                                         #
+# ******************************************************************************************** #
+
+pwd=0
+file=0
+verbose=0
+user_host=0
+pad=""
+pwd0=""
+file0=""
+user_host0=""
+
+# ******************************************************************************************** #
+# Getops from scratch by D.J. Mills, https://github.com/e36freak/templates/blob/master/options #
+# ******************************************************************************************** #
+
+optstring=hf:d:u:
+
+builtin unset options
+
+while (($#)); do
+  case $1 in
+
+    -[!-]?*)
+
+      for ((i=1; i<${#1}; i++)); do
+        c=${1:i:1}
+
+        options+=("-$c")
+
+        if [[ $optstring = *"$c:"* && ${1:i+1} ]]; then
+          options+=("${1:i+1}")
+          builtin break
+        fi
+      done
+      ;;
+
+    --?*=*) options+=("${1%%=*}" "${1#*=}");;
+
+    --) options+=(--endopts);;
+
+    *) options+=("$1");;
+  esac
+  shift
+done
+
+set -- "${options[@]}"
+
+unset options
+
+# ******************************************************************************************** #
+#   If first option is not empty and it does not start with a dash then exit with an error.    #
+# ******************************************************************************************** #
+
+[[ -n $1 && $1 != -?* ]] && {
+  die "invalid option -- '$1', Try '$scriptname --help'"
+}
+
+# ******************************************************************************************** #
+#                          Parse the command line arguments/options.                           #
+# ******************************************************************************************** #
+
+while [[ $1 = -?* ]]; do
+  case $1 in
+    --help|-\?|-h)
+      ShowHelp
+      exit 0
+      ;;
+    --verbose|-v)
+      verbose=1
+      ;;
+    --directory|-d)
+      shift
+      [[ -n $1 ]] || die "-d requires a directory/path! Try '$scriptname --help'"
+      [[ -d $1 ]] || die "'$1' is not a directory! Try '$scriptname --help'"
+      [[ -x $1 ]] || die "Cannot create file into '$1' permission denied!"
+      pwd=1
+      pwd0=$1
+      ;;
+    --user-host|-u)
+      shift
+      [[ -n $1 ]] || die "user_host needs a value, Try '$USER@$HOST'"
+      user_host=1
+      user_host0=$1
+      ;;
+    --file|-f)
+      shift
+      [[ -z $1 ]] && die "-f requires a database!" 1
+      output=$(file -- "$1")
+      [[ "$output" = *'SQLite 3.x database'* ]] || die "'$1' $output" 1
+      printf '%s\n' "Creating a backup of '$1' to '${1}.old'"
+      cp -v "$1" "${1}.old" || die "Something went wrong!"
+      printf 'Done%s\n'
+      file=1
+      file0=$1
+      ;;
+    --endopts)
+      shift
+      break
+      ;;
+    *)
+      die "invalid option -- '$1', Try '$scriptname --help'"
+      ;;
+  esac
+  shift
+done
+
+# ******************************************************************************************** #
+#          Sqlite3 function  which loads the database and plus the remaining arguments.        #
+# ******************************************************************************************** #
+
+__sdb_sqlite() {
+  sqlite3 "$file0" "$@"
+}
+
+# ******************************************************************************************** #
+#      The command to alter,create,insert and drop the existing table inside a variable.       #
+# ******************************************************************************************** #
+
+create_new_table="ALTER TABLE history RENAME TO history_tmp;
+CREATE TABLE history(
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+hist_id INTEGER,
+cmd TEXT,
+epoch INTEGER,
+ppid INTEGER,
+exit_status INTEGER,
+user_hosts TEXT DEFAULT NULL,
+pwd TEXT,
+salt TEXT
+);
+INSERT INTO history(
+id,
+hist_id,
+cmd,
+epoch,
+ppid,
+exit_status,
+pwd,
+salt
+)
+SELECT id, hist_id, cmd, epoch, ppid, exit_status, pwd, salt FROM history_tmp;
+DROP TABLE history_tmp;"
+
+# ******************************************************************************************** #
+# If database is given then execute the alter,insert,create and drop, else exit with an error  #
+# ******************************************************************************************** #
+
+if ((file)); then
+  printf '%s\n' "Creating new table with a new column 'user_hosts'"
+  __sdb_sqlite <<< "$create_new_table"
+  printf 'Done%s\n'
+else
+  die "Which database?, Try '$scriptname --help'" 1
+fi
+
+# ******************************************************************************************** #
+#           If there is no user_host option given then default to $USER@$HOST value.           #
+# ******************************************************************************************** #
+
+if ((!user_host)); then
+  user_host0=$USER@$HOST
+  user_host=1
+fi
+
+# ******************************************************************************************** #
+#     If user_host is given then pad leading spaces to the user_host and update the column.    #
+# ******************************************************************************************** #
+
+if ((user_host)); then
+  printf 'Updating user_hosts column to %s\n' "'$user_host0'"
+  (( ${#user_host0} < 20 )) && minus=$(( 20 - ${#user_host0} )) && printf -v pad '%*s' "$minus"
+   update_user_host="UPDATE history SET user_hosts = '$pad$user_host0';"
+  __sdb_sqlite <<< "$update_user_host"
+  printf 'Done%s\n'
+fi
+
+# ******************************************************************************************** #
+#     If the directory/path destination is given then move the database to that location.      #
+# ******************************************************************************************** #
+
+if ((pwd)); then
+  printf '%s\n' "Moving '$file0' to '$pwd0'"
+  mv -v "$file0" "$pwd0" || die "Something went wrong!"
+  printf 'Done%s\n'
+fi
+
+# vim:ft=sh
+# ============================================================================================ #
+#                                   >>> END OF SCRIPT <<<                                      #
+# ============================================================================================ #
