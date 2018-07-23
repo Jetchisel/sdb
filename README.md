@@ -95,12 +95,11 @@ Search commands from the **last ten years** and **now**, following the **GNU dat
 sdb -cam+ -t '-10 years, now'
  ```
 
-
 Try the help option for more info about how to use sdb.
 ```
 sdb --help
-
 ```
+
 ---
 ### Multi user
 For multi user option ala central database for users some changes needs to be done.
@@ -110,17 +109,11 @@ First create a directory where the shared history database will reside as oppose
 mkdir /path/to/new/directory
 ```
 
-Edit the default location of the database in the script, put the absolute path of the newly created directory.
-From:
+Put the line below in your ~/.bashrc,  if you're sourcing sdb from ~/.bashrc preferably before that line.
 ```
-__sdb_file=${SDB_DATABASE:-$HOME/.bash_history.sqlite}
-```
-To:
-```
-__sdb_file=${SDB_DATABASE:-/path/to/new/directory/bash_history.sqlite}
+SDB_DATABASE=/path/to/new/directory/bash_history.sqlite
 ```
 or whatever you want to name that database instead of **bash_history.sqlite**
-
 
 Users that will use the database **MUST** have **read** and **write** access to the **directory** and the **database**.
 Assuming that the default group is being used. (Otherwise create a new group)
@@ -168,6 +161,7 @@ This is for recording bash history for a user or a group of trusted users.
 If the builtin command **eval** is not for you, just ignore the **-E** option.
 
 but... but... sql injection...
+
 ---
 ### Trouble shooting
 

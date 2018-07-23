@@ -1,8 +1,8 @@
-Version 2.0.0 Release note of sdb.
+Version 2.0.1 Release note of sdb.
 
 ======================================================================================================================================
 
-This is a release note from version  2.0.0, if you're migrating  from a previous release
+This is a release note from version  2.0.1, if you're migrating  from a previous release
 please use the migratedb script to migrate the previous database/table that is missing a
 user_host column. As always  as a godd practice before doing some editing ALWAYS create a
 BACKUP of the file you're editing regardless of how/what/when/where.
@@ -25,12 +25,13 @@ FIXES:
 
 -  Remove the function exec.
   * "Bad file descriptor" error when changing file descriptors in the interactive shell.
+- Fix the instruction on howto do a multi user set up for sdb.
 
 ======================================================================================================================================
 
 CAVEATS:
 
--  Vim is the default and only pager and editor. (for non vim users only)
+-  Vim is the default and only pager and editor for querying commands. (for non vim users only)
 -  Not all commands are recorded. Like for example 'exec bash'. (not that important anyway)
 -  Requires some external GNU tools/utilities that is not builtin from the shell. (Welcome to the shell)
 -  Commands from the database are re-executed using the builtin eval command from bash. (no other easy alternative by the shell alone)

@@ -2,14 +2,14 @@
 #: Title           : sdb                                                                       #
 #: Sypnosis        : sdb [OPTIONS]... [QUERY]...                                               #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Sun 22 Jul 2018 16:55:36 PM +08  /  Sun Jul 22 08:55:36 UTC 2018          #
+#: Last Edit       : Mon 23 Jul 2018 15:44:13 PM +08  /  Mon Jul 23 07:44:13 UTC 2018          #
 #: License         : MIT                                                                       #
-#: Version         : 2.0.0                                                                     #
+#: Version         : 2.0.1                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
 #: Description     : Log bash_history in a database (A fork of dbhist.sh by Dennis Gladkikh)   #
 #: Options         : [abdehlmnprsuUvwzBEHS?]                                                   #
 #: Home Page       : https://github.com/Jetchisel/sdb                                          #
-#: ExtComm         : base64,date,dd,mktemp,whoami,rm,sqlite3,tput,uname,vim                    #
+#: ExtComm         : base64,date,dd,less,mktemp,whoami,rm,sqlite3,tput,uname,vim               #
 #: Copyright       : Jason V. Ferrer 2017-2018 based on dbhist.                                #
 # ============================================================================================ #
 
@@ -73,7 +73,6 @@ __sdb_name_=${BASH_SOURCE##*/}
 exit() {
   builtin history -s -- exit "$@"
 }
-
 
 __sdb_warn_() {
   builtin printf '%s: %s\n%s\n' "$__sdb_name_" "$@" >&2
@@ -453,8 +452,8 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
      builtin declare -a __sdb_opt
 
      if builtin type -P tput >/dev/null; then
-       G=$(builtin command tput bold)
-       R=$(builtin command tput sgr0)
+       G=$(builtin command -p tput bold)
+       R=$(builtin command -p tput sgr0)
      fi
 
 # ******************************************************************************************** #
@@ -907,7 +906,6 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
      fi
 
      sql_commands+=("GROUP BY cmd,exit_status,TRIM(user_hosts)")
-
 
      if ((pwd)); then
        sql_commands+=(,pwd)
