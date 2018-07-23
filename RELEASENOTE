@@ -1,8 +1,8 @@
-Version 2.0.1 Release note of sdb.
+Version 2.0.2 Release note of sdb.
 
 ======================================================================================================================================
 
-This is a release note from version  2.0.1, if you're migrating  from a previous release
+This is a release note from version  2.0.2, if you're migrating  from a previous release
 please use the migratedb script to migrate the previous database/table that is missing a
 user_host column. As always  as a godd practice before doing some editing ALWAYS create a
 BACKUP of the file you're editing regardless of how/what/when/where.
@@ -23,8 +23,13 @@ IMPROVEMENTS:
 
 FIXES:
 
--  Remove the function exec.
+- Fix bug for the -E option.
+  * When printing commands to stdout the trailing pipe with the exit status is printed, with choice 1.
+  * Add history -s and print the command to stdout before executing with eval, with choice no 4.
+
+- Remove the function exec.
   * "Bad file descriptor" error when changing file descriptors in the interactive shell.
+
 - Fix the instruction on howto do a multi user set up for sdb.
 
 ======================================================================================================================================

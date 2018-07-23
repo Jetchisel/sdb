@@ -2,9 +2,9 @@
 #: Title           : sdb                                                                       #
 #: Sypnosis        : sdb [OPTIONS]... [QUERY]...                                               #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Mon 23 Jul 2018 15:44:13 PM +08  /  Mon Jul 23 07:44:13 UTC 2018          #
+#: Last Edit       : Mon 23 Jul 2018 22:40:03 PM +08  /  Mon Jul 23 14:40:03 UTC 2018          #
 #: License         : MIT                                                                       #
-#: Version         : 2.0.1                                                                     #
+#: Version         : 2.0.2                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
 #: Description     : Log bash_history in a database (A fork of dbhist.sh by Dennis Gladkikh)   #
 #: Options         : [abdehlmnprsuUvwzBEHS?]                                                   #
@@ -729,7 +729,7 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
            case $answer in
              1)
                builtin echo
-               { [[ -d "$execute_var0" ]] && builtin shopt -q autocd ; } || printf '%s\n' "$execute_var0"
+               { [[ -d "$execute_var0" ]] && builtin shopt -q autocd ; } || printf '%s\n' "${execute_var0%"|"*}"
                builtin eval "${execute_var0%"|"*}"
                builtin return
                ;;
@@ -764,6 +764,8 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
          builtin printf '%s\n' "${execute_var0%"|"*}" > "$temporary_dir/$temporary_file0"
          builtin command -p vim "$temporary_dir/$temporary_file0"
          while IFS= builtin read -u9 -r __sdb_evalcommands; do
+           builtin history -s "$__sdb_evalcommands"
+           builtin printf '%s\n' "$__sdb_evalcommands"
            builtin eval "$__sdb_evalcommands"
          done 9< "$temporary_dir/$temporary_file0"
          builtin return
