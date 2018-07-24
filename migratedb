@@ -3,16 +3,20 @@
 #: Title           : migratedb                                                                 #
 #: Sypnosis        : migrated [OPTIONS] [FILE]                                                 #
 #: Date Created    : Sat 21 Jul 2018 13:41:43 PM +08  /  Sat Jul 21 05:41:43 UTC 2018          #
-#: Last Edit       : Sun 22 Jul 2018 15:55:56 PM +08  /  Sun Jul 22 07:55:56 UTC 2018          #
+#: Last Edit       : Tue 24 Jul 2018 08:49:34 AM +08  /  Tue Jul 24 00:49:34 UTC 2018          #
 #: License         : MIT                                                                       #
-#: Version         : 1.0.0                                                                     #
+#: Version         : 1.0.1                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
 #: Description     : Add a new user_host column from the previous database/table of sdb        #
-#: Options         : [fud]                                                                     #
+#: Options         : [fhud]                                                                    #
 #: Home Page       : https://github.com/Jetchisel/sdb                                          #
 #: ExtComm         : cp,file,mv,sqlite3                                                        #
 #: Copyright       : Jason V. Ferrer 2018                                                      #
 # ============================================================================================ #
+
+# ******************************************************************************************** #
+#                       Add a timestamp to all the output or the script.                       #
+# ******************************************************************************************** #
 
 exec > >(
   while read -r; do
@@ -126,10 +130,10 @@ pwd=0
 file=0
 verbose=0
 user_host=0
-pad=""
-pwd0=""
-file0=""
-user_host0=""
+pad=
+pwd0=
+file0=
+user_host0=
 
 # ******************************************************************************************** #
 # Getops from scratch by D.J. Mills, https://github.com/e36freak/templates/blob/master/options #
@@ -186,9 +190,6 @@ while [[ $1 = -?* ]]; do
     --help|-\?|-h)
       ShowHelp
       exit 0
-      ;;
-    --verbose|-v)
-      verbose=1
       ;;
     --directory|-d)
       shift

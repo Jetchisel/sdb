@@ -2,9 +2,9 @@
 #: Title           : sdb                                                                       #
 #: Sypnosis        : sdb [OPTIONS]... [QUERY]...                                               #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Mon 23 Jul 2018 22:40:03 PM +08  /  Mon Jul 23 14:40:03 UTC 2018          #
+#: Last Edit       : Tue 24 Jul 2018 11:06:51 AM +08  /  Tue Jul 24 03:06:51 UTC 2018          #
 #: License         : MIT                                                                       #
-#: Version         : 2.0.2                                                                     #
+#: Version         : 2.1.2                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
 #: Description     : Log bash_history in a database (A fork of dbhist.sh by Dennis Gladkikh)   #
 #: Options         : [abdehlmnprsuUvwzBEHS?]                                                   #
@@ -280,19 +280,19 @@ if "${SDB_HISTORY:-true}"; then
       builtin return
     fi
 
-    builtin local pad=""
-    builtin local num=""
-    builtin local minus=""
-    builtin local epoch=""
-    builtin local total0=""
-    builtin local total1=""
-    builtin local regexp2=""
-    builtin local logname=""
-    builtin local command=""
-    builtin local hostname=""
-    builtin local command__=""
-    builtin local recent_command=""
-    builtin local latest_hist_id=""
+    builtin local pad=
+    builtin local num=
+    builtin local minus=
+    builtin local epoch=
+    builtin local total0=
+    builtin local total1=
+    builtin local regexp2=
+    builtin local logname=
+    builtin local command=
+    builtin local hostname=
+    builtin local command__=
+    builtin local recent_command=
+    builtin local latest_hist_id=
     builtin local IFS
     builtin local two=2
     builtin local pwd=$(builtin pwd)
@@ -371,7 +371,7 @@ VALUES(
     "${epoch:-"$(builtin command date -d 'now' '+%s')"}",
     "${command__//\"/\"\"}",
     "$PPID",
-    "$Last_Command",
+    "${Last_Command:-777}",
     "$pad${__sdb_user_host}",
     "${pwd//\"/\"\"}",
     "$__sdb_salt"
@@ -408,40 +408,40 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
      builtin local whole_line=0
      builtin local __sdb_edit=0
      builtin local time_search=0
-     builtin local G=""
-     builtin local R=""
-     builtin local dir0=""
-     builtin local dir1=""
-     builtin local dir2=""
-     builtin local user0=""
-     builtin local user1=""
-     builtin local user2=""
-     builtin local stat0=""
-     builtin local stat1=""
-     builtin local stat2=""
-     builtin local pwd_q=""
-     builtin local menus=""
-     builtin local answer=""
-     builtin local location=""
-     builtin local UserOnly=""
-     builtin local HostOnly=""
-     builtin local optstring=""
-     builtin local separator=""
-     builtin local User_Host=""
-     builtin local query_end=""
-     builtin local pathquery=""
-     builtin local rpathquery=""
-     builtin local ExitStatus=""
-     builtin local query_begin=""
-     builtin local query_whole=""
-     builtin local execute_var=""
-     builtin local time_search0=""
-     builtin local time_search1=""
-     builtin local time_search2=""
-     builtin local execute_var0=""
-     builtin local both_user_host=""
-     builtin local __sdb_execute_var=""
-     builtin local first_sql_commands=""
+     builtin local G=
+     builtin local R=
+     builtin local dir0=
+     builtin local dir1=
+     builtin local dir2=
+     builtin local user0=
+     builtin local user1=
+     builtin local user2=
+     builtin local stat0=
+     builtin local stat1=
+     builtin local stat2=
+     builtin local pwd_q=
+     builtin local menus=
+     builtin local answer=
+     builtin local location=
+     builtin local UserOnly=
+     builtin local HostOnly=
+     builtin local optstring=
+     builtin local separator=
+     builtin local User_Host=
+     builtin local query_end=
+     builtin local pathquery=
+     builtin local rpathquery=
+     builtin local ExitStatus=
+     builtin local query_begin=
+     builtin local query_whole=
+     builtin local execute_var=
+     builtin local time_search0=
+     builtin local time_search1=
+     builtin local time_search2=
+     builtin local execute_var0=
+     builtin local both_user_host=
+     builtin local __sdb_execute_var=
+     builtin local first_sql_commands=
      builtin local name=$__sdb_name_
      builtin local comm0='----------------+'
      builtin local comm1='   COMMAND      |'
@@ -729,7 +729,8 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
            case $answer in
              1)
                builtin echo
-               { [[ -d "$execute_var0" ]] && builtin shopt -q autocd ; } || printf '%s\n' "${execute_var0%"|"*}"
+               { [[ -d "${execute_var0%"|"*}" ]] && builtin shopt -q autocd ; } || printf '%s\n' "${execute_var0%"|"*}"
+               builtin history -s "${execute_var0%"|"*}"
                builtin eval "${execute_var0%"|"*}"
                builtin return
                ;;
@@ -742,7 +743,7 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
              4)
                builtin echo
                __sdb_edit=1
-               break
+               builtin break
                ;;
              *)
                printf '%s\n\n' "${blank+""}"
@@ -765,7 +766,7 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
          builtin command -p vim "$temporary_dir/$temporary_file0"
          while IFS= builtin read -u9 -r __sdb_evalcommands; do
            builtin history -s "$__sdb_evalcommands"
-           builtin printf '%s\n' "$__sdb_evalcommands"
+           { [[ -d "$__sdb_evalcommands" ]] && builtin shopt -q autocd ; } || printf '%s\n' "$__sdb_evalcommands"
            builtin eval "$__sdb_evalcommands"
          done 9< "$temporary_dir/$temporary_file0"
          builtin return
@@ -798,7 +799,7 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
 
      first_sql_commands="
        SELECT
-       substr('        '||max(id),-12) ||
+       substr('           '||max(id),-12) ||
          ' | ' ||
          substr('      '||count(*),-6) ||
          ' | ' ||

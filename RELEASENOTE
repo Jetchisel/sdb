@@ -1,11 +1,10 @@
-Version 2.0.2 Release note of sdb.
+Version 2.1.2 Release note of sdb.
 
 ======================================================================================================================================
 
-This is a release note from version  2.0.2, if you're migrating  from a previous release
-please use the migratedb script to migrate the previous database/table that is missing a
-user_host column. As always  as a godd practice before doing some editing ALWAYS create a
-BACKUP of the file you're editing regardless of how/what/when/where.
+This is a release note from version  2.1.2, if you're migrating  from a previous release prior to 2.0.0 please use the
+migratedb script to migrate the previous database/table that is missing a user_host column. As always as a godd practice
+before doing some editing ALWAYS create a BACKUP of the file you're editing regardless of how/what/when/where.
 
 ======================================================================================================================================
 
@@ -23,14 +22,22 @@ IMPROVEMENTS:
 
 FIXES:
 
-- Fix bug for the -E option.
+- Fix bug for the -E option of the sdb script.
   * When printing commands to stdout the trailing pipe with the exit status is printed, with choice 1.
-  * Add history -s and print the command to stdout before executing with eval, with choice no 4.
+  * Show only the commands that is not a directory when the autocd is enabled, with choice 1 and 4.
+  * Add command to history via history -s and print the command to stdout before executing with eval, with choices 1 and  4.
 
 - Remove the function exec.
   * "Bad file descriptor" error when changing file descriptors in the interactive shell.
 
 - Fix the instruction on howto do a multi user set up for sdb.
+
+- Adjust the width of the ID or first column to allow 10 digits entry, about 9 billion lines :)
+  without breaking indentation for smaller digits on the sdb script.
+
+- Remove the -v option and add -h for the ExtComm on the migratedb script.
+
+- Add the default 777 value for the variable Last_Command to avoid an empty exit_status column value, also 777 is easy to spot.
 
 ======================================================================================================================================
 
@@ -41,3 +48,5 @@ CAVEATS:
 -  Requires some external GNU tools/utilities that is not builtin from the shell. (Welcome to the shell)
 -  Commands from the database are re-executed using the builtin eval command from bash. (no other easy alternative by the shell alone)
 -  Sql injection is always a possibility. (Yes, I know, mum says not to use the shell for a database!)
+
+======================================================================================================================================
