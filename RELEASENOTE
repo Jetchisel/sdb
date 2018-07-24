@@ -1,10 +1,16 @@
-Version 2.1.2 Release note of sdb.
+Version 2.1.3 Release note of sdb.
 
 ======================================================================================================================================
 
-This is a release note from version  2.1.2, if you're migrating  from a previous release prior to 2.0.0 please use the
+This is a release note from version  2.1.3, if you're migrating  from a previous release prior to 2.0.0 please use the
 migratedb script to migrate the previous database/table that is missing a user_host column. As always as a godd practice
 before doing some editing ALWAYS create a BACKUP of the file you're editing regardless of how/what/when/where.
+
+
+Remove the leading white space from the previous column user_hosts Assuming the default location of the database has not been changed.
+
+sqlite3 ~/bash_history.sqlite "UPDATE  history SET user_hosts=LTRIM(user_hosts);"
+
 
 ======================================================================================================================================
 

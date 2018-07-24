@@ -3,9 +3,9 @@
 #: Title           : migratedb                                                                 #
 #: Sypnosis        : migrated [OPTIONS] [FILE]                                                 #
 #: Date Created    : Sat 21 Jul 2018 13:41:43 PM +08  /  Sat Jul 21 05:41:43 UTC 2018          #
-#: Last Edit       : Tue 24 Jul 2018 08:49:34 AM +08  /  Tue Jul 24 00:49:34 UTC 2018          #
+#: Last Edit       : Wed 25 Jul 2018 07:20:05 AM +08  /  Tue Jul 24 23:20:05 UTC 2018          #
 #: License         : MIT                                                                       #
-#: Version         : 1.0.1                                                                     #
+#: Version         : 1.0.2                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
 #: Description     : Add a new user_host column from the previous database/table of sdb        #
 #: Options         : [fhud]                                                                    #
@@ -286,13 +286,12 @@ if ((!user_host)); then
 fi
 
 # ******************************************************************************************** #
-#     If user_host is given then pad leading spaces to the user_host and update the column.    #
+#        If user_host is given then add it to the user_host column and update the column.      #
 # ******************************************************************************************** #
 
 if ((user_host)); then
   printf 'Updating user_hosts column to %s\n' "'$user_host0'"
-  (( ${#user_host0} < 20 )) && minus=$(( 20 - ${#user_host0} )) && printf -v pad '%*s' "$minus"
-   update_user_host="UPDATE history SET user_hosts = '$pad$user_host0';"
+   update_user_host="UPDATE history SET user_hosts = '$user_host0';"
   __sdb_sqlite <<< "$update_user_host"
   printf 'Done%s\n'
 fi

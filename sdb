@@ -2,15 +2,15 @@
 #: Title           : sdb                                                                       #
 #: Sypnosis        : sdb [OPTIONS]... [QUERY]...                                               #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Tue 24 Jul 2018 11:06:51 AM +08  /  Tue Jul 24 03:06:51 UTC 2018          #
+#: Last Edit       : Wed 25 Jul 2018 07:49:13 AM +08  /  Tue Jul 24 23:49:13 UTC 2018          #
 #: License         : MIT                                                                       #
-#: Version         : 2.1.2                                                                     #
+#: Version         : 2.1.3                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
 #: Description     : Log bash_history in a database (A fork of dbhist.sh by Dennis Gladkikh)   #
 #: Options         : [abdehlmnprsuUvwzBEHS?]                                                   #
 #: Home Page       : https://github.com/Jetchisel/sdb                                          #
 #: ExtComm         : base64,date,dd,less,mktemp,whoami,rm,sqlite3,tput,uname,vim               #
-#: Copyright       : Jason V. Ferrer 2017-2018 based on dbhist.                                #
+#: Copyright       : Jason V. Ferrer 2017-2018                                                 #
 # ============================================================================================ #
 
 ################################################################################################
@@ -280,7 +280,8 @@ if "${SDB_HISTORY:-true}"; then
       builtin return
     fi
 
-    builtin local pad=
+    __sdb_user_host=
+    builtin local IFS=
     builtin local num=
     builtin local minus=
     builtin local epoch=
@@ -293,11 +294,9 @@ if "${SDB_HISTORY:-true}"; then
     builtin local command__=
     builtin local recent_command=
     builtin local latest_hist_id=
-    builtin local IFS
     builtin local two=2
-    builtin local pwd=$(builtin pwd)
     builtin local constant=20
-    __sdb_user_host=""
+    builtin local pwd=$(builtin pwd)
 
     if builtin type -P whoami >/dev/null; then
       logname=$(builtin command whoami)
@@ -347,15 +346,6 @@ if "${SDB_HISTORY:-true}"; then
     }
 
 # ******************************************************************************************** #
-#         Pad leading white spaces to the user_host column just to have a fixed width.         #
-# ******************************************************************************************** #
-
-  if (( ${#__sdb_user_host} < constant )); then
-    minus=$(( constant - ${#__sdb_user_host} ))
-    builtin printf -v pad '%*s' "$minus"
-  fi
-
-# ******************************************************************************************** #
 #             Insert data into the database using a while read loop and a heredoc.             #
 # ******************************************************************************************** #
 
@@ -372,7 +362,7 @@ VALUES(
     "${command__//\"/\"\"}",
     "$PPID",
     "${Last_Command:-777}",
-    "$pad${__sdb_user_host}",
+    "$__sdb_user_host",
     "${pwd//\"/\"\"}",
     "$__sdb_salt"
   );
@@ -915,7 +905,7 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
        dir0='----------------+'
        dir1="   DIRECTORY    |${separator// }"
        dir2='----------------+'
-       comm1='   COMMAND     |'
+       comm1='    COMMAND    |'
      fi
 
      sql_commands+=("ORDER BY max(id) DESC LIMIT $max;")
