@@ -1,4 +1,4 @@
-Version 2.1.3 Release note of sdb.
+Version 2.1.4 Release note of sdb.
 
 ======================================================================================================================================
 
@@ -10,7 +10,6 @@ before doing some editing ALWAYS create a BACKUP of the file you're editing rega
 Remove the leading white space from the previous column user_hosts Assuming the default location of the database has not been changed.
 
 sqlite3 ~/bash_history.sqlite "UPDATE  history SET user_hosts=LTRIM(user_hosts);"
-
 
 ======================================================================================================================================
 
@@ -35,15 +34,12 @@ FIXES:
 
 - Remove the function exec.
   * "Bad file descriptor" error when changing file descriptors in the interactive shell.
-
 - Fix the instruction on howto do a multi user set up for sdb.
-
 - Adjust the width of the ID or first column to allow 10 digits entry, about 9 billion lines :)
   without breaking indentation for smaller digits on the sdb script.
-
 - Remove the -v option and add -h for the ExtComm on the migratedb script.
-
 - Add the default 777 value for the variable Last_Command to avoid an empty exit_status column value, also 777 is easy to spot.
+- Adjust the width of the user_hosts column to accomodate the shortest username and not break the indentation of the width.
 
 ======================================================================================================================================
 

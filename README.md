@@ -170,7 +170,7 @@ but... but... sql injection...
 
 * The value of the **COMMAND** column is **HISTTIMEFORMAT="%s "**
 
-  *  Set the time format **exactly** to **HISTTIMEFORMAT="%s "**
+  *  Set the time format **literally** to **HISTTIMEFORMAT="%s "** in your **~/.bashrc** file
 
 * Error where it says database or table is missing.
 
@@ -178,12 +178,18 @@ but... but... sql injection...
 
   *  Check if the table has been removed.
 
+* The command **exit** does not exit the current shell session.
+
+  *  Invoke the builtin by:  **builtin exit**
+
+  *  Set the time format **literally** to **HISTTIMEFORMAT="%s "** in your **~/.bashrc** file
+
 * The exit_status column  value is **777**
 
   *  Check if the first value of **"$PROMPT_COMMAND"** is still **__sdb_prompt**
 
   *  Check for the string **Last_Command** in the sdb script.  It should be just below the
-    line where the **__sdb_prompt** function is.
+     line where the **__sdb_prompt** function is.
 
 To fix the column  Replace the 777 exit status with something else. (Assuming the default location of the database)
 

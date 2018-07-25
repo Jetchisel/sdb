@@ -2,9 +2,9 @@
 #: Title           : sdb                                                                       #
 #: Sypnosis        : sdb [OPTIONS]... [QUERY]...                                               #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Wed 25 Jul 2018 07:49:13 AM +08  /  Tue Jul 24 23:49:13 UTC 2018          #
+#: Last Edit       : Wed 25 Jul 2018 10:13:39 AM +08  /  Wed Jul 25 02:13:39 UTC 2018          #
 #: License         : MIT                                                                       #
-#: Version         : 2.1.3                                                                     #
+#: Version         : 2.1.4                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
 #: Description     : Log bash_history in a database (A fork of dbhist.sh by Dennis Gladkikh)   #
 #: Options         : [abdehlmnprsuUvwzBEHS?]                                                   #
@@ -776,7 +776,7 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
      fi
 
      if ((user_host)); then
-       User_Host="substr('        '||max(user_hosts),-20)||
+       User_Host="substr('             '||max(user_hosts),-20)||
        ' | '||"
        user0='----------------------+'
        user1='      USER@HOST       |'
