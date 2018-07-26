@@ -2,9 +2,9 @@
 #: Title           : sdb                                                                       #
 #: Sypnosis        : sdb [OPTIONS]... [QUERY]...                                               #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Wed 25 Jul 2018 10:13:39 AM +08  /  Wed Jul 25 02:13:39 UTC 2018          #
+#: Last Edit       : Thu 26 Jul 2018 18:57:17 PM +08  /  Thu Jul 26 10:57:17 UTC 2018          #
 #: License         : MIT                                                                       #
-#: Version         : 2.1.4                                                                     #
+#: Version         : 2.1.6                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
 #: Description     : Log bash_history in a database (A fork of dbhist.sh by Dennis Gladkikh)   #
 #: Options         : [abdehlmnprsuUvwzBEHS?]                                                   #
@@ -579,11 +579,7 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
            fi
            user_host=1
            OnlyUser=1
-           if (( ${#__sdb_user_host} < 20 )); then
-             UserOnly="% ${1}@%"
-           else
-             UserOnly="${1}@%"
-           fi
+           UserOnly="${1}@%"
            ;;
          --end-with|-e)
            builtin shift
@@ -752,6 +748,7 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
        temporary_dir=$(builtin command -p mktemp -d "$TMPDIR/XXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
 
        if ((__sdb_edit)); then
+         ! type -P vim >/dev/null && { __sdb_warn_ "'vim' is either not installed or it is not in your PATH" "exiting now..."; return 127 ; }
          builtin printf '%s\n' "${execute_var0%"|"*}" > "$temporary_dir/$temporary_file0"
          builtin command -p vim "$temporary_dir/$temporary_file0"
          while IFS= builtin read -u9 -r __sdb_evalcommands; do
@@ -879,7 +876,8 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
      fi
 
      if ((time_search)); then
-       sql_commands+=("AND (epoch between $(builtin command -p date -d"${time_search0%,*}" "+%s") and $(builtin command -p date -d"${time_search0#*,}" "+%s"))")
+       sql_commands+=("AND (epoch between $(builtin command -p date -d"${time_search0%,*}" "+%s") and $(builtin command -p date -d"${time_search0#*,}" "+%s"))"
+       )
      fi
 
      if ((zero)); then
@@ -922,6 +920,7 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
      }
 
      if ((!offpager)); then
+       ! type -P vim >/dev/null && { __sdb_warn_ "'vim' is either not installed or it is not in your PATH" "exiting now..."; return 127; }
        builtin command -p vim --not-a-term - < <(__sdb__main_funct__)
        builtin return
      fi
