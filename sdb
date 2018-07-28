@@ -2,9 +2,9 @@
 #: Title           : sdb                                                                       #
 #: Sypnosis        : sdb [OPTIONS]... [QUERY]...                                               #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Sat 28 Jul 2018 20:37:21 PM +08  /  Sat Jul 28 12:37:21 UTC 2018          #
+#: Last Edit       : Sat 28 Jul 2018 21:04:51 PM +08  /  Sat Jul 28 13:04:51 UTC 2018          #
 #: License         : MIT                                                                       #
-#: Version         : 2.4.6                                                                     #
+#: Version         : 2.4.8                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
 #: Description     : Log bash_history in a database (A fork of dbhist.sh by Dennis Gladkikh)   #
 #: Options         : [abcdehlmnprsuvwBEHSU?]                                                   #
@@ -781,11 +781,11 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
        temporary_dir=$(builtin command -p mktemp -d "$TMPDIR/XXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
        if ((__sdb_edit)); then
          builtin printf '%s\n' "${execute_var0%"|"*}" > "$temporary_dir/$temporary_file0"
-         "${EDITOR:-vim}" "$temporary_dir/$temporary_file0" || return
+         "${EDITOR:-vim}" "$temporary_dir/$temporary_file0" || builtin return
          while IFS= builtin read -u9 -r __sdb_evalcommands; do
            builtin history -s "$__sdb_evalcommands"
            { [[ -d "$__sdb_evalcommands" ]] && builtin shopt -q autocd ; } || printf '%s\n' "$__sdb_evalcommands"
-           builtin eval "$__sdb_evalcommands" || return
+           builtin eval "$__sdb_evalcommands" || builtin return
          done 9< "$temporary_dir/$temporary_file0"
          builtin return
        fi
