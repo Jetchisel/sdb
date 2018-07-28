@@ -2,12 +2,12 @@
 #: Title           : sdb                                                                       #
 #: Sypnosis        : sdb [OPTIONS]... [QUERY]...                                               #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Thu 26 Jul 2018 18:57:17 PM +08  /  Thu Jul 26 10:57:17 UTC 2018          #
+#: Last Edit       : Sat 28 Jul 2018 20:37:21 PM +08  /  Sat Jul 28 12:37:21 UTC 2018          #
 #: License         : MIT                                                                       #
-#: Version         : 2.1.6                                                                     #
+#: Version         : 2.4.6                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
 #: Description     : Log bash_history in a database (A fork of dbhist.sh by Dennis Gladkikh)   #
-#: Options         : [abdehlmnprsuUvwzBEHS?]                                                   #
+#: Options         : [abcdehlmnprsuvwBEHSU?]                                                   #
 #: Home Page       : https://github.com/Jetchisel/sdb                                          #
 #: ExtComm         : base64,date,dd,less,mktemp,whoami,rm,sqlite3,tput,uname,vim               #
 #: Copyright       : Jason V. Ferrer 2017-2018                                                 #
@@ -40,20 +40,26 @@
 # SOFTWARE.                                                                                    #
 #                                                                                              #
 #==============================================================================================#
-# To use it, just source the file `source sdb`                                                 #
+# Configuration:                                                                               #
+#   Add the following entry in your shell rc file, e.g. "$HOME/.bashrc"                        #
 #                                                                                              #
-# Configuration                                                                                #
-#   SDB_HISTORY=true - use false to disable                                                    #
-#   SDB_HISTORYFILE=$HOME/.bash_history.sqlite  - location of sdb sqlite3 database.            #
-#                                                                                              #
-# To make it work I keep next configuration for bash, the only important is the                #
-# time format, to make it unixtime                                                             #
-#                                                                                              #
-#   HISTSIZE=$HOME/.bash_history                                                               #
-#   HISTFILESIZE=1000                                                                          #
+#   set -o history                                                                             #
 #   HISTSIZE=1000                                                                              #
 #   HISTTIMEFORMAT="%s "                                                                       #
+#   HISTFILE=$HOME/.bash_history                                                               #
 #   HISTCONTROL=ignorespace:erasedups                                                          #
+#   SDB_HISTORY=true                                                                           #
+#   SDB_DATABASE=$HOME/.bash_history.sqlite.                                                   #
+#                                                                                              #
+#   Change The value of SDB_HISTORY from "true" to "false" to disable sdb.                     #
+#   Change the value of SDB_DATABASE to something/somewhere else for multi-user set up.        #
+#                                                                                              #
+# Using the script:                                                                            #
+#   if the script is in the current pwd.                                                       #
+#   source ./sdb                                                                               #
+#                                                                                              #
+#   if the script is somewhere else.                                                           #
+#   source /path/to/somewhere/else/sdb                                                         #
 ################################################################################################
 
 # ******************************************************************************************** #
@@ -64,7 +70,28 @@ if ! builtin shopt -q extglob; then
   builtin shopt -s extglob
 fi
 
+# ******************************************************************************************** #
+#                             The scriptname without the pathname.                             #
+# ******************************************************************************************** #
+
 __sdb_name_=${BASH_SOURCE##*/}
+
+# ******************************************************************************************** #
+#                    Warn function to print error messages to stderr.                          #
+# ******************************************************************************************** #
+
+__sdb_warn_() {
+  builtin printf '%s: %s\n%s\n' "$__sdb_name_" "$@" >&2
+}
+
+# ******************************************************************************************** #
+#              Check if bash version is lower than 4, exit with an error if true.              #
+# ******************************************************************************************** #
+
+if (( BASH_VERSINFO[0] < 4 )); then
+  __sdb_warn_ 'This function requires bash 4.0 or newer' 'Please update to a more recent bash.'
+  return 1
+fi
 
 # ******************************************************************************************** #
 #       Function for , exit so sdb can capture the commands before it can be executed.         #
@@ -72,10 +99,6 @@ __sdb_name_=${BASH_SOURCE##*/}
 
 exit() {
   builtin history -s -- exit "$@"
-}
-
-__sdb_warn_() {
-  builtin printf '%s: %s\n%s\n' "$__sdb_name_" "$@" >&2
 }
 
 # ******************************************************************************************** #
@@ -95,30 +118,34 @@ Without any options/arguments the default is to show the recent commands
 if there is/are any in the current session. ($__sdb_name_ commands excluded by default.)
 
 OPTIONS:
-  -c, --common-info         Implies -hudl.
-  -?, --help                Show this help.
-  -o, --off-pager           Disable the pager.
-  -s, --self                Include history about $__sdb_name_.
-  -u, --user [word]         Show user that matches word.
-  -h, --host [word]         Show the host that matches word.
-  -H, --here                Reduce search only for current pwd.
-  -E, --execute-id [n]      Execute the command with the nth id.
-  -l, --last-status         Show the exit status of the commands.
-  -e, --end-with [word]     Match only commands that ends with word.
-  -b, --begin-with [word]   Match only commands that starts with word.
-  -d, --directory           Show the working directory of the commands.
-  -z, --zero                Show commands that exited with zero status.
-  -U, --under               Reduce search only for current and under pwd.
-  -v, --verbose             Verbose output (show actual sqlite3 command).
-  -w, --with-word [word]    Match commands with word from beginning to end.
-  -n, --non-zero            Show commands that exited with non-zero status.
-  -p, --path [dir]          Show commands executed inside the directory dir.
-  -a, --all                 Include history of all sessions. Not only current.
-  -S, --shell               Access to the sqlite3 shell and load the shell database.
-  -r, --recurse-path [dir]  Show commands executed inside and under the directory dir.
-  -m, --max-count [n+]      N numbers of latest commands to show. Use + for maximum value.
-  -t, --time-search [start],[end] Search commands from start date to end date, GNU date syntax.
+  -c, --common-info                 Implies -hudl.
+  -?, --help                        Show this help.
+  -o, --off-pager                   Disable the pager.
+  -s, --self                        Include history about $__sdb_name_.
+  -u, --user [word]                 Show user that matches word.
+  -h, --host [word]                 Show the host that matches word.
+  -H, --here                        Reduce search only for current pwd.
+  -E, --execute-id [n]              Execute the command with the nth id.
+  -l, --last-status                 Show the exit status of the commands.
+  -e, --end-with [word]             Match only commands that ends with word.
+  -b, --begin-with [word]           Match only commands that starts with word.
+  -d, --directory                   Show the working directory of the commands.
+  -U, --under                       Reduce search only for current and under pwd.
+  -v, --verbose                     Verbose output (show actual sqlite3 command).
+  -w, --with-word [word]            Match commands with word from beginning to end.
+  -p, --path [dir]                  Show commands executed inside the directory dir.
+  -a, --all                         Include history of all sessions. Not only current.
+  -S, --shell                       Access to the sqlite3 shell and load the shell database.
+  -r, --recurse-path [dir]          Show commands executed inside and under the directory dir.
+  -t, --time-search [start],[end]   Search commands from start date to end date, GNU date syntax.
+  -m, --max-count [n+]              N numbers of latest commands to show. Use + for maximum value.
+  -n, --numeric-status [n+]         Show commands that exited with the nth status or + if greater than zero.
 
+A newly open shell does not have  any commands to show unless the -a option is specified which
+defaults to 100 lines, unless the -m option is specified.
+
+The PAGER and EDITOR environment variables are used/accepted. PAGER defaults
+to whatever the system is using. EDITOR defaults to vim if empty.
 
 The date/time format is in Unix epoch time. GNU date has some option to convert that into human
 readable format. It also has an option which allows you to say things like today, now, yesterday
@@ -168,21 +195,23 @@ Both short and long option can be used as well.
 
     --option=argument -acv -m+
 
-A newly open shell  does not have  any commands to show unless the -a option
-is specified, which defaults to 100 lines, unless the -m option is specified.
+Redirect the output to a file use the redirection \"greater than\" > sign.
 
-1rst column: ID column, increment of all the executed commands.
-2nd column:  Times the commands has been executed.
-3rd column:  Specified by -[hu], shows the user & host.
-4rth column: Date and time of the executed commands.
-5th column:  Specified by the -l option shows the exit status.
-6th column:  Specified by the -d option shows the pwd.
-last column: Commands, separated by a > from the path column.
+    sdb ... > file
+
+THE ORDER OF COLUMNS
+   1rst column: ID column, increment of all the executed commands.
+   2nd  column: Number of times the commands has been executed.
+   3rd  column: Specified by -[hu], shows the user & host.
+   4rth column: Date and time of the executed commands.
+   5th  column: Specified by the -l option shows the exit status.
+   6th  column: Specified by the -d option shows the pwd.
+   last column: Commands, separated by a > from the path column.
 
 NOTE
    As far as the shell is concern When it comes to the exit status of the given
    command, 0 is a success and the rest are a failure. But not all commands that
-   exited with a non-zero is a failure per se. Likewise  not all  commands that
+   exited with a nonzero is a failure per se. Likewise  not all  commands that
    exited with  zero is a success. Consult  the documentation of the program in
    question.
 
@@ -194,7 +223,7 @@ SEE ALSO
 AUTHOR
      Jason V. Ferrer <jetchisel@opensuse.org>
 "
-  printf '%s\n' "$help" | less
+  printf '%s\n' "$help" | "$PAGER" -
 }
 
 # ******************************************************************************************** #
@@ -295,14 +324,13 @@ if "${SDB_HISTORY:-true}"; then
     builtin local recent_command=
     builtin local latest_hist_id=
     builtin local two=2
-    builtin local constant=20
     builtin local pwd=$(builtin pwd)
 
     if builtin type -P whoami >/dev/null; then
-      logname=$(builtin command whoami)
+      logname=$(builtin command -p whoami)
     fi
     if builtin type -P uname >/dev/null; then
-      hostname=$(builtin command uname -n)
+      hostname=$(builtin command -p uname -n)
     fi
 
     __sdb_user_host=${logname:-Anonymous}@${hostname:-Nohost}
@@ -358,7 +386,7 @@ INSERT INTO history(
   )
 VALUES(
     "${num:-"$latest_hist_id"}",
-    "${epoch:-"$(builtin command date -d 'now' '+%s')"}",
+    "${epoch:-"$(builtin command -p date -d 'now' '+%s')"}",
     "${command__//\"/\"\"}",
     "$PPID",
     "${Last_Command:-777}",
@@ -389,7 +417,6 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
      builtin local max=100
      builtin local execute=0
      builtin local verbose=0
-     builtin local nonzero=0
      builtin local offpager=0
      builtin local OnlyUser=0
      builtin local OnlyHost=0
@@ -398,6 +425,7 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
      builtin local whole_line=0
      builtin local __sdb_edit=0
      builtin local time_search=0
+     builtin local numeric_status=0
      builtin local G=
      builtin local R=
      builtin local dir0=
@@ -432,6 +460,7 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
      builtin local both_user_host=
      builtin local __sdb_execute_var=
      builtin local first_sql_commands=
+     builtin local numeric_status_value=
      builtin local name=$__sdb_name_
      builtin local comm0='----------------+'
      builtin local comm1='   COMMAND      |'
@@ -450,7 +479,7 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
 # Getops from scratch by D.J. Mills, https://github.com/e36freak/templates/blob/master/options #
 # ******************************************************************************************** #
 
-     optstring=adslnvozcHSb:e:h:m:u:w:r:t:p:E:
+     optstring=adslvocHSb:e:h:m:n:u:w:r:t:p:E:
 
      builtin unset options
 
@@ -568,8 +597,8 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
            fi
            time_search=1
            time_search0=$1
-           time_search1=$(builtin command -p date -d"${time_search0%,*}" "+%s") || return
-           time_search2=$(builtin command -p date -d"${time_search0#*,}" "+%s") || return
+           time_search1=$(builtin command -p date -d"${time_search0%,*}" "+%s") || builtin return
+           time_search2=$(builtin command -p date -d"${time_search0#*,}" "+%s") || builtin return
            ;;
          --user|-u)
            builtin shift
@@ -662,13 +691,18 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
          --directory|-d)
            pwd=1
            ;;
-         --non-zero|-n)
-           nonzero=1
+         --numeric-status|-n)
+           builtin shift
+           if [[ -z $1 ]]; then
+             __sdb_warn_ "status requires a value!" "Try '$__sdb_name_ --help'"
+             builtin return 1
+           elif ! [[  $1 = +([0-9]) || $1 = + ]]; then
+             __sdb_warn_ "status requires an integer or a + sign!" "Try '$__sdb_name_ --help'"
+             builtin return 1
+           fi
            exit_stat=1
-           ;;
-         --zero|-z)
-           zero=1
-           exit_stat=1
+           numeric_status=1
+           numeric_status_value=$1
            ;;
          --endopts)
            builtin shift
@@ -706,7 +740,7 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
        __sdb_opt=(
          "[Execute the command]${separator// } \`$G${execute_var0%"|"*}$R'" "[Previous exit_status]${separator// } \`$G${execute_var0##*"|"}$R'"
          "[Inside the current directory]${separator// } \`$G$(builtin pwd)$R'" "${G}1${R}) Yes, execute now." "${G}2${R}) No, abort command."
-         "${G}3${R}) No, print only." "${G}4${R}) No, edit command first." "[${G}1-4${R}]$G${separator// }$R "
+         "${G}3${R}) No, print to stdout only." "${G}4${R}) No, edit command first with the value EDITOR." "[${G}1-4${R}]$G${separator// }$R "
        )
 
         while :; do
@@ -739,22 +773,19 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
            esac
        done
 
-       trap 'rm -rf "$temporary_dir"' return
-       trap 'exit 1' 1 2 3 15
+       builtin trap 'builtin command -p rm -rf "$temporary_dir"' return
+       builtin trap 'builtin exit 1' 1 2 3 15
 
        TMPDIR=${TMPDIR:-/tmp}
        temporary_file0=__${__sdb_name_}_tempfile0_$RANDOM
-
        temporary_dir=$(builtin command -p mktemp -d "$TMPDIR/XXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
-
        if ((__sdb_edit)); then
-         ! type -P vim >/dev/null && { __sdb_warn_ "'vim' is either not installed or it is not in your PATH" "exiting now..."; return 127 ; }
          builtin printf '%s\n' "${execute_var0%"|"*}" > "$temporary_dir/$temporary_file0"
-         builtin command -p vim "$temporary_dir/$temporary_file0"
+         "${EDITOR:-vim}" "$temporary_dir/$temporary_file0" || return
          while IFS= builtin read -u9 -r __sdb_evalcommands; do
            builtin history -s "$__sdb_evalcommands"
            { [[ -d "$__sdb_evalcommands" ]] && builtin shopt -q autocd ; } || printf '%s\n' "$__sdb_evalcommands"
-           builtin eval "$__sdb_evalcommands"
+           builtin eval "$__sdb_evalcommands" || return
          done 9< "$temporary_dir/$temporary_file0"
          builtin return
        fi
@@ -876,27 +907,18 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
      fi
 
      if ((time_search)); then
-       sql_commands+=("AND (epoch between $(builtin command -p date -d"${time_search0%,*}" "+%s") and $(builtin command -p date -d"${time_search0#*,}" "+%s"))"
-       )
+       sql_commands+=("AND (epoch between $(builtin command -p date -d"${time_search0%,*}" "+%s") and $(builtin command -p date -d"${time_search0#*,}" "+%s"))")
      fi
 
-     if ((zero)); then
-       if ((nonzero)); then
-         __sdb_warn_ "conflicting options specified!" "Try '$__sdb_name_ --help'"
-         builtin return 1
+     if ((numeric_status)); then
+       if [[ $numeric_status_value = + ]]; then
+         sql_commands+=("AND (exit_status > '0')")
+       else
+         sql_commands+=("AND (exit_status = $numeric_status_value)")
        fi
-       sql_commands+=("AND (exit_status = '0')")
      fi
 
-     if ((nonzero)); then
-       if ((zero)); then
-         __sdb_warn_ "conflicting options specified!" "Try '$__sdb_name_ --help'"
-         builtin return 1
-       fi
-       sql_commands+=("AND (exit_status > '0')")
-     fi
-
-     sql_commands+=("GROUP BY cmd,exit_status,TRIM(user_hosts)")
+     sql_commands+=("GROUP BY cmd,exit_status,user_hosts")
 
      if ((pwd)); then
        sql_commands+=(,pwd)
@@ -915,13 +937,23 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
 
        builtin printf '%s\n%s\n%s\n' "$def0$user0$stat0$dir0$comm0" "$def1$user1$stat1$dir1$comm1" "$def2$user2$stat2$dir2$comm2"
 
-      __sdb_sqlite < <(builtin printf '%s ' "${sql_commands[@]}")
+      __sdb_sqlite < <(builtin printf '%s ' "${sql_commands[@]}") || builtin return
       builtin return
      }
 
      if ((!offpager)); then
-       ! type -P vim >/dev/null && { __sdb_warn_ "'vim' is either not installed or it is not in your PATH" "exiting now..."; return 127; }
-       builtin command -p vim --not-a-term - < <(__sdb__main_funct__)
+       builtin trap 'builtin command -p rm -rf "$temporary_dir"' return
+       builtin trap 'builtin exit 1' 1 2 3 15
+
+       TMPDIR=${TMPDIR:-/tmp}
+       temporary_file0=__${__sdb_name_}_tempfile0_$RANDOM
+       temporary_dir=$(builtin command -p mktemp -d "$TMPDIR/XXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+       __sdb__main_funct__ > "$temporary_dir/$temporary_file0" 2>&1 || builtin return
+       if [[ $PAGER  = less ]]; then
+         builtin command -p "$PAGER" -Ss "$temporary_dir/$temporary_file0" || builtin return
+         builtin return
+       fi
+       "$PAGER" "$temporary_dir/$temporary_file0" || builtin return
        builtin return
      fi
 
@@ -938,6 +970,15 @@ fi
 if [[ $PROMPT_COMMAND != *__sdb_prompt* ]]; then
   PROMPT_COMMAND="__sdb_prompt${PROMPT_COMMAND:+; $PROMPT_COMMAND}"
 fi
+
+# ******************************************************************************************** #
+#   A hack to send an error message when the script was invoke via the likes of 'bash ./sdb'   #
+# ******************************************************************************************** #
+
+(builtin return 2>/dev/null) || {
+  __sdb_warn_ "To use '$__sdb_name_'" "Run: source $BASH_SOURCE"
+  (builtin return 2>/dev/null)
+}
 
 # vim:ft=sh
 # ============================================================================================ #

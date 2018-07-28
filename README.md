@@ -14,16 +14,29 @@ The following are shown in the query.
 ----
 ### Prerequisites
 
-Bash history time format **MUST** be in epoch.
+Make sure that access to the command history is **ENABLED** in your ~/.bashrc file
+```
+set -o history
+```
+
+Bash history time format **MUST** be in **epoch**.
 ```
 HISTTIMEFORMAT="%s "
 ```
 
-Only tested on bash version 4+ and the following GNU tools. Most of them are included in the GNU coreutils.
+Bash version 4+ and the following GNU tools. Most of them are included in the GNU coreutils.
 
-```
-sqlite3, mktemp, uname, date, dd, base64, whoami, rm, tput, vim
-```
+* dd
+* rm
+* vim
+* tput
+* date
+* uname
+* less
+* mktemp
+* base64
+* whoami
+* sqlite3
 
 ----
 ### Installing
@@ -131,7 +144,7 @@ Try a network share for the database as well :).
 ### Sqlite Commands.
 An example of how to query the database assuming the default name and location from the script.
 ```
-sqlite3 ~/.bash_history.sqlite '.mode column' '.header on' '.width 6 15 7 20 50 50' 'select id,epoch,exit_status as status,TRIM(user_hosts) as user_hosts,pwd,cmd from history DESC limit 20;' | less -Ss
+sqlite3 ~/.bash_history.sqlite '.mode column' '.header on' '.width 6 15 7 20 50 50' 'select id,epoch,exit_status as status,user_hosts,pwd,cmd from history DESC limit 20;' | less -Ss
 ```
 
 An example of how to update/set/edit the epoch time with the ID that has a value of 129.
@@ -164,27 +177,27 @@ but... but... sql injection...
 ---
 ### Trouble shooting
 
-* Error where it says something about **could not write to database**
+Error where it says something about **could not write to database**
 
   *  Check the permission of the **directory** and the database **file**
 
-* The value of the **COMMAND** column is **HISTTIMEFORMAT="%s "**
+The value of the **COMMAND** column is **HISTTIMEFORMAT="%s "**
 
   *  Set the time format **literally** to **HISTTIMEFORMAT="%s "** in your **~/.bashrc** file
 
-* Error where it says database or table is missing.
+Error where it says database or table is missing.
 
   *  Check the database if it is still in place.
 
   *  Check if the table has been removed.
 
-* The command **exit** does not exit the current shell session.
+The command **exit** does not exit the current shell session.
 
   *  Invoke the builtin by:  **builtin exit**
 
   *  Set the time format **literally** to **HISTTIMEFORMAT="%s "** in your **~/.bashrc** file
 
-* The exit_status column  value is **777**
+The exit_status column  value is **777**
 
   *  Check if the first value of **"$PROMPT_COMMAND"** is still **__sdb_prompt**
 
@@ -215,5 +228,3 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 * The author of dbhist.sh Denis Gladkikh, - [Denis](https://www.outcoldman.com/en/archive/2017/07/19/dbhist)
 * D.J. Mills, - [e36freak](https://github.com/e36freak)
 * Others that was not mentioned :)
-
-
