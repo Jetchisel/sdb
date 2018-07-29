@@ -76,7 +76,7 @@ sdb -a
 ```
 Show commands with a **zero exit status**.
 ```
-sdb -z
+sdb -n 0
 ```
 
 Show only **10** recent commands.
