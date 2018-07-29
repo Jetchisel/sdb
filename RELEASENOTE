@@ -1,8 +1,8 @@
-Version 2.4.8 Release note of sdb.
+Version 2.6.8 Release note of sdb.
 
 ======================================================================================================================================
 
-This is a release note from version  2.4.8, if you're migrating  from a previous release prior to 2.0.0 please use the
+This is a release note from version  2.6.8, if you're migrating  from a previous release prior to 2.0.0 please use the
 migratedb script to migrate the previous database/table that is missing a user_host column. As always as a godd practice
 before doing some editing ALWAYS create a BACKUP of the file you're editing regardless of how/what/when/where.
 
@@ -13,7 +13,7 @@ sqlite3 ~/bash_history.sqlite "UPDATE  history SET user_hosts=LTRIM(user_hosts);
 
 ======================================================================================================================================
 
-IMPROVEMENTS:
+IMPROVEMENTS
 
 -  Search commands by date.
 -  Pager by default when opening a query.
@@ -27,10 +27,11 @@ IMPROVEMENTS:
 -  Add a check for the bash version is being used. exit if lower the 4.0
 -  Show the current working directory and the last exit status of the command before being re-executed.
 -  Add a test if the sdb script is being executed via "bash sdb" and exit with an error status and message.
+-  Add ability to resolve the dotted paths: ., ./, .., and ../ via realpath utilitly.
 
 ======================================================================================================================================
 
-FIXES:
+FIXES
 
 - Fix bug for the -E option of the sdb script.
   * When printing commands to stdout the trailing pipe with the exit status is printed, with choice 1.
@@ -50,7 +51,7 @@ FIXES:
 
 ======================================================================================================================================
 
-CAVEATS:
+CAVEATS
 
 -  Not all commands are recorded. Like for example 'exec bash'. (not that important anyway)
 -  Requires some external GNU tools/utilities that is not builtin from the shell. (Welcome to the shell)

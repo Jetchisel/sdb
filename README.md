@@ -37,6 +37,7 @@ Bash version 4+ and the following GNU tools. Most of them are included in the GN
 * base64
 * whoami
 * sqlite3
+* realpath
 
 ----
 ### Installing

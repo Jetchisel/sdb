@@ -2,14 +2,14 @@
 #: Title           : sdb                                                                       #
 #: Sypnosis        : sdb [OPTIONS]... [QUERY]...                                               #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Sat 28 Jul 2018 21:04:51 PM +08  /  Sat Jul 28 13:04:51 UTC 2018          #
+#: Last Edit       : Mon 30 Jul 2018 07:12:53 AM +08  /  Sun Jul 29 23:12:53 UTC 2018          #
 #: License         : MIT                                                                       #
-#: Version         : 2.4.8                                                                     #
+#: Version         : 2.6.8                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
 #: Description     : Log bash_history in a database (A fork of dbhist.sh by Dennis Gladkikh)   #
-#: Options         : [abcdehlmnprsuvwBEHSU?]                                                   #
+#: Options         : [abcdehlmnoprsuvwBES?]                                                    #
 #: Home Page       : https://github.com/Jetchisel/sdb                                          #
-#: ExtComm         : base64,date,dd,less,mktemp,whoami,rm,sqlite3,tput,uname,vim               #
+#: ExtComm         : base64,date,dd,less,mktemp,whoami,realpath,rm,sqlite3,tput,uname,vim      #
 #: Copyright       : Jason V. Ferrer 2017-2018                                                 #
 # ============================================================================================ #
 
@@ -106,9 +106,11 @@ exit() {
 # ******************************************************************************************** #
 
 ____ShowHelp____() {
-  builtin local IFS help
-
-IFS=$'\n' builtin read -u6 -rd '' help 6<<<"
+  if ! type -P less >/dev/null; then
+    __sdb_warn_ "less is either not installed or it is not in your PATH" "bye!"
+    builtin return 1
+  fi
+  less -Ss <<-EOF
 USAGE: $__sdb_name_ [OPTIONS]... [QUERY]...
 
 A bash shell function that records bash_history in a sqlite3 database.
@@ -120,17 +122,15 @@ if there is/are any in the current session. ($__sdb_name_ commands excluded by d
 OPTIONS:
   -c, --common-info                 Implies -hudl.
   -?, --help                        Show this help.
-  -o, --off-pager                   Disable the pager.
   -s, --self                        Include history about $__sdb_name_.
   -u, --user [word]                 Show user that matches word.
   -h, --host [word]                 Show the host that matches word.
-  -H, --here                        Reduce search only for current pwd.
   -E, --execute-id [n]              Execute the command with the nth id.
   -l, --last-status                 Show the exit status of the commands.
   -e, --end-with [word]             Match only commands that ends with word.
+  -o, --off-pager                   Disable the pager. (not for -? and --help)
   -b, --begin-with [word]           Match only commands that starts with word.
   -d, --directory                   Show the working directory of the commands.
-  -U, --under                       Reduce search only for current and under pwd.
   -v, --verbose                     Verbose output (show actual sqlite3 command).
   -w, --with-word [word]            Match commands with word from beginning to end.
   -p, --path [dir]                  Show commands executed inside the directory dir.
@@ -144,9 +144,6 @@ OPTIONS:
 A newly open shell does not have  any commands to show unless the -a option is specified which
 defaults to 100 lines, unless the -m option is specified.
 
-The PAGER and EDITOR environment variables are used/accepted. PAGER defaults
-to whatever the system is using. EDITOR defaults to vim if empty.
-
 The date/time format is in Unix epoch time. GNU date has some option to convert that into human
 readable format. It also has an option which allows you to say things like today, now, yesterday
 -1 month, etc. The -t or --time-search make use of this words. The format is \"startdate, end date\"
@@ -157,21 +154,21 @@ Examples of searching by date.
 
    search between yesterday and now.
 
-    \"yesterday, now\"
+    "yesterday, now"
 
    search between yesterday and an hour ago
 
-   \"-1 day, -1 hour\"
+   "-1 day, -1 hour"
 
    search between a year ago and today.
 
-   \"1 year ago, today\"
+   "1 year ago, today"
 
    search between last tuesday and a minute ago.
 
-   \"last tuesday, -1 minute\"
+   "last tuesday, -1 minute"
 
-   See the manual for more info on GNU date(1).
+See the manual for more info on GNU date(1).
 
 For maximum query use + instead of [n] when the -m or --max-count is specified.
 The value of [n] becomes 999999999999999999, Which translates to:
@@ -195,9 +192,24 @@ Both short and long option can be used as well.
 
     --option=argument -acv -m+
 
-Redirect the output to a file use the redirection \"greater than\" > sign.
+Redirect the output to a file use the redirection "greater than" > sign.
 
-    sdb ... > file
+    sdb -vcam+ > file
+
+The PAGER and EDITOR  environment  variables is used/accepted when doing a
+search/query/edit for the commands. Except for -? and --help option. PAGER
+defaults to  whatever the system is using. EDITOR defaults to vim if empty.
+
+    PAGER=kate sdb -vcam+
+
+    EDITOR=nano sdb -E 101
+
+Some editors like gvim does not work by default without some options.
+create a function first.
+
+    gvim() { builtin command -p gvim -f "\$@"; }
+
+    EDITOR=gvim sdb -vcam+
 
 THE ORDER OF COLUMNS
    1rst column: ID column, increment of all the executed commands.
@@ -218,12 +230,12 @@ NOTE
 SEE ALSO
        sqlite3(1), signal(7), date(1)
        https://www.sqlite.org/index.html
-       The "\""EXIT STATUS"\"" section from bash(1).
+       The "EXIT STATUS" section from bash(1).
 
 AUTHOR
      Jason V. Ferrer <jetchisel@opensuse.org>
-"
-  printf '%s\n' "$help" | "$PAGER" -
+EOF
+builtin return
 }
 
 # ******************************************************************************************** #
@@ -479,7 +491,7 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
 # Getops from scratch by D.J. Mills, https://github.com/e36freak/templates/blob/master/options #
 # ******************************************************************************************** #
 
-     optstring=adslvocHSb:e:h:m:n:u:w:r:t:p:E:
+     optstring=acdlosvSb:e:h:m:n:u:w:r:t:p:E:
 
      builtin unset options
 
@@ -628,23 +640,39 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
            ;;
          --recurse-path|-r)
            builtin shift
-           rpath=1
-           pwd=1
            if [[ -z $1 ]]; then
              __sdb_warn_ "path requires a value!" "Try '$__sdb_name_ --help'"
              builtin return 1
+           elif [[ $1 = @('.'|'./'|'..'|'../') ]]; then
+             if type -P realpath >/dev/null; then
+               rpathquery=$(builtin command -p realpath -- "$1")
+             else
+               __sdb_warn_ "Could not resolv path $G$1$R" "realpath is either not installed or it is not in your PATH"
+               builtin return 1
+             fi
+           else
+             rpathquery=$1
            fi
-           rpathquery=$1
+           rpath=1
+           pwd=1
            ;;
          --path|-p)
            builtin shift
-           path=1
            if [[ -z $1 ]]; then
              __sdb_warn_ "path requires a value!" "Try '$__sdb_name_ --help'"
              builtin return 1
+           elif [[ $1 = @('.'|'./'|'..'|'../') ]]; then
+             if type -P realpath >/dev/null; then
+               pathquery=$(builtin command -p realpath -- "$1")
+             else
+               __sdb_warn_ "Could not resolv path $G$1$R" "realpath is either not installed or it is not in your PATH"
+               builtin return 1
+             fi
+           else
+             pathquery=$1
            fi
            pwd=1
-           pathquery=$1
+           path=1
            ;;
          --verbose|-v)
            verbose=1
@@ -673,20 +701,6 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
              builtin return 1
            fi
            execute_var=$1
-           ;;
-         --here|-H)
-           if [[ -n $location || -n $pathquery ]]; then
-             __sdb_warn_ "conflicting options specified!" "Try '$__sdb_name_ --help'"
-             builtin return 1
-           fi
-           location=here
-           ;;
-         --under|-U)
-           if [[ -n $location || -n $pathquery ]]; then
-             __sdb_warn_ "conflicting options specified!" "Try '$__sdb_name_ --help'"
-             builtin return 1
-           fi
-           location=under
            ;;
          --directory|-d)
            pwd=1
@@ -740,7 +754,7 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
        __sdb_opt=(
          "[Execute the command]${separator// } \`$G${execute_var0%"|"*}$R'" "[Previous exit_status]${separator// } \`$G${execute_var0##*"|"}$R'"
          "[Inside the current directory]${separator// } \`$G$(builtin pwd)$R'" "${G}1${R}) Yes, execute now." "${G}2${R}) No, abort command."
-         "${G}3${R}) No, print to stdout only." "${G}4${R}) No, edit command first with the value EDITOR." "[${G}1-4${R}]$G${separator// }$R "
+         "${G}3${R}) No, print to stdout only." "${G}4${R}) No, edit command first with the EDITOR." "[${G}1-4${R}]$G${separator// }$R "
        )
 
         while :; do
@@ -751,7 +765,7 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
                builtin echo
                { [[ -d "${execute_var0%"|"*}" ]] && builtin shopt -q autocd ; } || printf '%s\n' "${execute_var0%"|"*}"
                builtin history -s "${execute_var0%"|"*}"
-               builtin eval "${execute_var0%"|"*}"
+               builtin eval "${execute_var0%"|"*}" || builtin return
                builtin return
                ;;
              2) builtin return
@@ -875,19 +889,6 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
        sql_commands+=("AND (cmd LIKE \"$query_whole\" ESCAPE '\')")
      fi
 
-     pwd_l=${PWD//\"/\"\"}
-
-     case $location in
-       here)
-         sql_commands+=("AND (pwd == \"$pwd_l\")")
-         ;;
-       under)
-         pwd_l=${pwd_l//%/\%}
-         pwd_l=${pwd_l//_/\_}
-         sql_commands+=("AND (pwd LIKE \"$pwd_l%\" ESCAPE '\')")
-         ;;
-     esac
-
      if ((path)); then
        if [[ -n $rpathquery ]]; then
          __sdb_warn_ "conflicting options specified!" "Try '$__sdb_name_ --help'"
@@ -898,11 +899,11 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
      fi
 
      if ((rpath)); then
-       if [[ -n $pathquery ]]; then
-         __sdb_warn_ "conflicting options specified!" "Try '$__sdb_name_ --help'"
-         builtin return 1
-       fi
-       rpathquery=${rpathquery//\"/\"\"}
+        if [[ -n $pathquery ]]; then
+          __sdb_warn_ "conflicting options specified!" "Try '$__sdb_name_ --help'"
+          builtin return 1
+        fi
+        rpathquery=${rpathquery//\"/\"\"}
        sql_commands+=("AND (pwd LIKE \"$rpathquery%\" ESCAPE '\')")
      fi
 
