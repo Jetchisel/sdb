@@ -2,9 +2,9 @@
 #: Title           : sdb                                                                       #
 #: Sypnosis        : sdb [OPTIONS]... [QUERY]...                                               #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Mon 30 Jul 2018 07:18:27 AM +08  /  Sun Jul 29 23:18:27 UTC 2018          #
+#: Last Edit       : Mon 30 Jul 2018 11:17:48 AM +08  /  Mon Jul 30 03:17:48 UTC 2018          #
 #: License         : MIT                                                                       #
-#: Version         : 2.6.9                                                                     #
+#: Version         : 2.8.9                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
 #: Description     : Log bash_history in a database (A fork of dbhist.sh by Dennis Gladkikh)   #
 #: Options         : [abcdehlmnoprsuvwBES?]                                                    #
@@ -146,7 +146,7 @@ defaults to 100 lines, unless the -m option is specified.
 
 The date/time format is in Unix epoch time. GNU date has some option to convert that into human
 readable format. It also has an option which allows you to say things like today, now, yesterday
--1 month, etc. The -t or --time-search make use of this words. The format is \"startdate, end date\"
+-1 month, etc. The -t or --time-search make use of this words. The format is "startdate, end date"
 It should be separated by a comma. The start date should always come first followed by the end date.
 Both arguments needs to be quoted together, otherwise the shell will see it as two arguments.
 
@@ -754,7 +754,7 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
        __sdb_opt=(
          "[Execute the command]${separator// } \`$G${execute_var0%"|"*}$R'" "[Previous exit_status]${separator// } \`$G${execute_var0##*"|"}$R'"
          "[Inside the current directory]${separator// } \`$G$(builtin pwd)$R'" "${G}1${R}) Yes, execute now." "${G}2${R}) No, abort command."
-         "${G}3${R}) No, print to stdout only." "${G}4${R}) No, edit command first with the EDITOR." "[${G}1-4${R}]$G${separator// }$R "
+         "${G}3${R}) No, print ALL info to stdout only." "${G}4${R}) No, edit command first with the EDITOR." "[${G}1-4${R}]$G${separator// }$R "
        )
 
         while :; do
@@ -771,7 +771,8 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
              2) builtin return
                ;;
              3)
-               builtin printf '\n\n%s\n' "${execute_var0%"|"*}"
+               builtin echo
+               __sdb_sqlite ".mode line" "select * from history where id = $execute_var;"
                builtin return
                ;;
              4)
@@ -794,7 +795,7 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
        temporary_file0=__${__sdb_name_}_tempfile0_$RANDOM
        temporary_dir=$(builtin command -p mktemp -d "$TMPDIR/XXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
        if ((__sdb_edit)); then
-         builtin printf '%s\n' "${execute_var0%"|"*}" > "$temporary_dir/$temporary_file0"
+         builtin printf '%s\n' "${execute_var0%"|"*}" > "$temporary_dir/$temporary_file0" || builtin return
          "${EDITOR:-vim}" "$temporary_dir/$temporary_file0" || builtin return
          while IFS= builtin read -u9 -r __sdb_evalcommands; do
            builtin history -s "$__sdb_evalcommands"
