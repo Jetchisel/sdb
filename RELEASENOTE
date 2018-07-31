@@ -1,8 +1,8 @@
-Version 2.8.9 Release note of sdb.
+Version 2.9.9 Release note of sdb.
 
 ======================================================================================================================================
 
-This is a release note from version  2.8.9, if you're migrating  from a previous release prior to 2.0.0 please use the
+This is a release note from version  2.9.9, if you're migrating  from a previous release prior to 2.0.0 please use the
 migratedb script to migrate the previous database/table that is missing a user_host column. As always as a godd practice
 before doing some editing ALWAYS create a BACKUP of the file you're editing regardless of how/what/when/where.
 
@@ -29,6 +29,7 @@ IMPROVEMENTS
 -  Add a test if the sdb script is being executed via "bash sdb" and exit with an error status and message.
 -  Add ability to resolve the dotted paths: ., ./, .., and ../ via realpath utilitly.
 -  Add ability to print ALL info about the given id via option -E choice 3.
+-  Add ability to print the ".mode line" output when doing a query.
 
 ======================================================================================================================================
 

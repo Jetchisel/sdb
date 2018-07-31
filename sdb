@@ -2,9 +2,9 @@
 #: Title           : sdb                                                                       #
 #: Sypnosis        : sdb [OPTIONS]... [QUERY]...                                               #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Mon 30 Jul 2018 11:17:48 AM +08  /  Mon Jul 30 03:17:48 UTC 2018          #
+#: Last Edit       : Tue 31 Jul 2018 12:34:29 PM +08  /  Tue Jul 31 04:34:29 UTC 2018          #
 #: License         : MIT                                                                       #
-#: Version         : 2.8.9                                                                     #
+#: Version         : 2.9.9                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
 #: Description     : Log bash_history in a database (A fork of dbhist.sh by Dennis Gladkikh)   #
 #: Options         : [abcdehlmnoprsuvwBES?]                                                    #
@@ -90,7 +90,7 @@ __sdb_warn_() {
 
 if (( BASH_VERSINFO[0] < 4 )); then
   __sdb_warn_ 'This function requires bash 4.0 or newer' 'Please update to a more recent bash.'
-  return 1
+  builtin return 1
 fi
 
 # ******************************************************************************************** #
@@ -106,11 +106,11 @@ exit() {
 # ******************************************************************************************** #
 
 ____ShowHelp____() {
-  if ! type -P less >/dev/null; then
+  if ! builtin type -P less >/dev/null; then
     __sdb_warn_ "less is either not installed or it is not in your PATH" "bye!"
     builtin return 1
   fi
-  less -Ss <<-EOF
+  builtin command -p less -Ss <<-EOF
 USAGE: $__sdb_name_ [OPTIONS]... [QUERY]...
 
 A bash shell function that records bash_history in a sqlite3 database.
@@ -132,6 +132,7 @@ OPTIONS:
   -b, --begin-with [word]           Match only commands that starts with word.
   -d, --directory                   Show the working directory of the commands.
   -v, --verbose                     Verbose output (show actual sqlite3 command).
+  -M, --mode-line                   Print the output as if ".mode line" is enabled.
   -w, --with-word [word]            Match commands with word from beginning to end.
   -p, --path [dir]                  Show commands executed inside the directory dir.
   -a, --all                         Include history of all sessions. Not only current.
@@ -375,7 +376,7 @@ if "${SDB_HISTORY:-true}"; then
     fi
 
     __sdb__executioner__() {
-      local basename dirname
+      builtin local basename dirname
       if [[ $command = 'exit '* ]]; then
         dirname=${command% *}
         basename=${command#* }
@@ -432,6 +433,7 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
      builtin local offpager=0
      builtin local OnlyUser=0
      builtin local OnlyHost=0
+     builtin local modeline=0
      builtin local exit_stat=0
      builtin local user_host=0
      builtin local whole_line=0
@@ -491,7 +493,7 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
 # Getops from scratch by D.J. Mills, https://github.com/e36freak/templates/blob/master/options #
 # ******************************************************************************************** #
 
-     optstring=acdlosvSb:e:h:m:n:u:w:r:t:p:E:
+     optstring=acdlosvMSb:e:h:m:n:u:w:r:t:p:E:
 
      builtin unset options
 
@@ -575,6 +577,9 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
          --last-status|-l)
            exit_stat=1
            ;;
+         --mode-line|-M)
+           modeline=1
+           ;;
          --self|-s)
            self=1
            ;;
@@ -644,7 +649,7 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
              __sdb_warn_ "path requires a value!" "Try '$__sdb_name_ --help'"
              builtin return 1
            elif [[ $1 = @('.'|'./'|'..'|'../') ]]; then
-             if type -P realpath >/dev/null; then
+             if builtin type -P realpath >/dev/null; then
                rpathquery=$(builtin command -p realpath -- "$1")
              else
                __sdb_warn_ "Could not resolv path $G$1$R" "realpath is either not installed or it is not in your PATH"
@@ -662,7 +667,7 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
              __sdb_warn_ "path requires a value!" "Try '$__sdb_name_ --help'"
              builtin return 1
            elif [[ $1 = @('.'|'./'|'..'|'../') ]]; then
-             if type -P realpath >/dev/null; then
+             if builtin type -P realpath >/dev/null; then
                pathquery=$(builtin command -p realpath -- "$1")
              else
                __sdb_warn_ "Could not resolv path $G$1$R" "realpath is either not installed or it is not in your PATH"
@@ -830,20 +835,25 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
        pwd_q="pwd || \"$separator\" ||"
      fi
 
-     first_sql_commands="
-       SELECT
-       substr('           '||max(id),-12) ||
-         ' | ' ||
-         substr('      '||count(*),-6) ||
-         ' | ' ||
-         datetime(max(epoch), 'unixepoch', 'localtime') ||
-         ' | ' ||
-         $User_Host
-         $ExitStatus
-         $pwd_q
-       cmd
-       FROM history
-       WHERE 1"
+     if ((modeline)); then
+       first_sql_commands=".mode line
+         SELECT * FROM history WHERE 1"
+     else
+       first_sql_commands="
+         SELECT
+         substr('           '||max(id),-12) ||
+           ' | ' ||
+           substr('      '||count(*),-6) ||
+           ' | ' ||
+           datetime(max(epoch), 'unixepoch', 'localtime') ||
+           ' | ' ||
+           $User_Host
+           $ExitStatus
+           $pwd_q
+         cmd
+         FROM history
+         WHERE 1"
+      fi
 
 # ******************************************************************************************** #
 #                  Assign the sqlite3 commands inside the sql_commands array.                  #
@@ -874,19 +884,19 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
 
      if ((begin)); then
        query_begin=${query_begin//\"/\"\"}
-       query_begin="$query_begin%"
+       query_begin=$query_begin%
        sql_commands+=("AND (cmd LIKE \"$query_begin\" ESCAPE '\')")
      fi
 
      if ((end)); then
        query_end=${query_end//\"/\"\"}
-       query_end="%$query_end"
+       query_end=%$query_end
        sql_commands+=("AND (cmd LIKE \"$query_end\" ESCAPE '\')")
      fi
 
      if ((whole_line)); then
        query_whole=${query_whole//\"/\"\"}
-       query_whole="%$query_whole%"
+       query_whole=%$query_whole%
        sql_commands+=("AND (cmd LIKE \"$query_whole\" ESCAPE '\')")
      fi
 
@@ -934,13 +944,16 @@ done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"
 
      __sdb__main_funct__() {
        if ((verbose)); then
-         builtin printf '%s %s%s\n%s\n' "sqlite3" "$__sdb_file" "${sql_commands[*]}" "${blank_line+""}"
+         builtin printf '%s ' "sqlite3 $__sdb_file" "${sql_commands[@]}"
+         builtin printf '\n\n'
        fi
 
-       builtin printf '%s\n%s\n%s\n' "$def0$user0$stat0$dir0$comm0" "$def1$user1$stat1$dir1$comm1" "$def2$user2$stat2$dir2$comm2"
+       if ((!modeline)); then
+         builtin printf '%s\n%s\n%s\n' "$def0$user0$stat0$dir0$comm0" "$def1$user1$stat1$dir1$comm1" "$def2$user2$stat2$dir2$comm2"
+       fi
 
-      __sdb_sqlite < <(builtin printf '%s ' "${sql_commands[@]}") || builtin return
-      builtin return
+        __sdb_sqlite < <(builtin printf '%s ' "${sql_commands[@]}") || builtin return
+        builtin return
      }
 
      if ((!offpager)); then
@@ -981,7 +994,6 @@ fi
   __sdb_warn_ "To use '$__sdb_name_'" "Run: source $BASH_SOURCE"
   (builtin return 2>/dev/null)
 }
-
 # vim:ft=sh
 # ============================================================================================ #
 #                                   >>> END OF SCRIPT <<<                                      #
