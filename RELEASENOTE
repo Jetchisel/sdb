@@ -1,8 +1,8 @@
-Version 2.9.9 Release note of sdb.
+Version 3.0.0 Release note of sdb.
 
 ======================================================================================================================================
 
-This is a release note from version  2.9.9, if you're migrating  from a previous release prior to 2.0.0 please use the
+This is a release note from version  3.0.0 if you're migrating  from a previous release prior to 2.0.0 please use the
 migratedb script to migrate the previous database/table that is missing a user_host column. As always as a godd practice
 before doing some editing ALWAYS create a BACKUP of the file you're editing regardless of how/what/when/where.
 
@@ -15,47 +15,20 @@ sqlite3 ~/bash_history.sqlite "UPDATE  history SET user_hosts=LTRIM(user_hosts);
 
 IMPROVEMENTS
 
--  Search commands by date.
--  Pager by default when opening a query.
--  New column which shows the user and host.
--  Optionial multi-user support instruction.
--  Maximum query for the -m option by using a plus sign, -m+
--  Use and accept/respect the env variables EDITOR and PAGER.
--  Option to edit an existing command before being re-executed.
--  The -n option can now do a exact numeric value for the exit status
--  Add the + argument to the -n option for exit status greater than zero.
--  Add a check for the bash version is being used. exit if lower the 4.0
--  Show the current working directory and the last exit status of the command before being re-executed.
--  Add a test if the sdb script is being executed via "bash sdb" and exit with an error status and message.
--  Add ability to resolve the dotted paths: ., ./, .., and ../ via realpath utilitly.
--  Add ability to print ALL info about the given id via option -E choice 3.
--  Add ability to print the ".mode line" output when doing a query.
+-  Capture and insert commands such as ''exec bash'' and ''source ~/.bashrc''
+-  Replace a newline with a literal ''\n'' for directory names that has newlines.
 
 ======================================================================================================================================
 
 FIXES
 
-- Fix bug for the -E option of the sdb script.
-  * When printing commands to stdout the trailing pipe with the exit status is printed, with choice 1.
-  * Show only the commands that is not a directory when the autocd is enabled, with choice 1 and 4.
-  * Add command to history via history -s and print the command to stdout before executing with eval, with choices 1 and  4.
-- Remove the function exec.
-  * "Bad file descriptor" error when changing file descriptors in the interactive shell.
-- Fix the instruction on howto do a multi user set up for sdb.
-- Adjust the width of the ID or first column to allow 10 digits entry, about 9 billion lines :)
-  without breaking indentation for smaller digits on the sdb script.
-- Remove the -v option and add -h for the ExtComm on the migratedb script.
-- Add the default 777 value for the variable Last_Command to avoid an empty exit_status column value, also 777 is easy to spot.
-- Adjust the width of the user_hosts column to accomodate the shortest username and not break the indentation of the width.
-- Fix bug user query does not match because of the previous leading white space test.
-  * Remove the test for leading whitespace from the user_hosts column.
-- Add a test for the command/executable vim in PATH, exit with a useful message if none found.
+-  Newlines ''$'\n''' in directory names in not inserted in the database.
 
 ======================================================================================================================================
 
 CAVEATS
 
--  Not all commands are recorded. Like for example 'exec bash'. (not that important anyway)
+-  Directory where commands such as ''exec bash'' or ''source ~/.bashrc'' is executed not perfect there are coner cases where it fails.
 -  Requires some external GNU tools/utilities that is not builtin from the shell. (Welcome to the shell)
 -  Commands from the database are re-executed using the builtin eval command from bash. (no other easy alternative by the shell alone)
 -  Sql injection is always a possibility. (Yes, I know, mum says not to use the shell for a database!)
