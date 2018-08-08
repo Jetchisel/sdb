@@ -2,9 +2,9 @@
 #: Title           : sdb                                                                       #
 #: Sypnosis        : sdb [OPTIONS]... [QUERY]...                                               #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Wed 08 Aug 2018 18:55:39 PM +08  /  Wed Aug  8 10:55:39 UTC 2018          #
+#: Last Edit       : Thu 09 Aug 2018 06:45:05 AM +08  /  Wed Aug  8 22:45:05 UTC 2018          #
 #: License         : MIT                                                                       #
-#: Version         : 3.0.0                                                                     #
+#: Version         : 3.0.1                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
 #: Description     : Log bash_history in a database (A fork of dbhist.sh by Dennis Gladkikh)   #
 #: Options         : [abcdehlmnoprsuvwBEMS?]                                                   #
@@ -410,12 +410,12 @@ if "${SDB_HISTORY:-true}"; then
             builtin return 1
           fi
           if shopt -q autocd; then
-            if [[ -d "$(builtin command -p realpath "${previous_cmd% *}")" ]]; then
-              previous_pwd=$(builtin command -p realpath "${previous_cmd% *}")
+            if [[ -d "$(builtin command -p realpath -q "${previous_cmd% *}")" ]]; then
+              previous_pwd=$(builtin command -p realpath -q "${previous_cmd% *}")
             fi
           fi
           if [[ ${previous_cmd% *} = cd ]]; then
-            previous_pwd=$(builtin command -p realpath "${previous_cmd#* }")
+            previous_pwd=$(builtin command -p realpath -q "${previous_cmd#* }")
           fi ## $previous_pwd is incorrect if you have a wrapper function that is calling cd,popd or pushd which
              ## changes the pwd and immediately run 'source ~/bashrc' or 'exec rm file' and immediately cd to somewhere
         __sdb_sqlite <<-END
