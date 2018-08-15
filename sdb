@@ -2,12 +2,12 @@
 #: Title           : sdb                                                                       #
 #: Sypnosis        : sdb [OPTIONS]... [QUERY]...                                               #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Thu 09 Aug 2018 06:45:05 AM +08  /  Wed Aug  8 22:45:05 UTC 2018          #
+#: Last Edit       : Wed 15 Aug 2018 12:09:15 PM +08  /  Wed Aug 15 04:09:15 UTC 2018          #
 #: License         : MIT                                                                       #
-#: Version         : 3.0.1                                                                     #
+#: Version         : 3.2.2                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
 #: Description     : Log bash_history in a database (A fork of dbhist.sh by Dennis Gladkikh)   #
-#: Options         : [abcdehlmnoprsuvwBEMS?]                                                   #
+#: Options         : [abcdehlmnoprsuvwABEMS?]                                                  #
 #: Home Page       : https://github.com/Jetchisel/sdb                                          #
 #: ExtComm         : base64,date,dd,whoami,realpath,rm,sqlite3,tput,uname                      #
 #: Copyright       : Jason V. Ferrer 2017-2018                                                 #
@@ -126,13 +126,13 @@ if there is/are any in the current session. (sdb commands excluded by default.)
 OPTIONS:
   -c, --common-info                 Implies -hudl.
   -?, --help                        Show this help.
+  -o, --off-pager                   Disable the pager.
   -s, --self                        Include history about sdb.
   -u, --user [word]                 Show user that matches word.
   -h, --host [word]                 Show the host that matches word.
   -E, --execute-id [n]              Execute the command with the nth id.
   -l, --last-status                 Show the exit status of the commands.
   -e, --end-with [word]             Match only commands that ends with word.
-  -o, --off-pager                   Disable the pager. (not for -? and --help)
   -b, --begin-with [word]           Match only commands that starts with word.
   -d, --directory                   Show the working directory of the commands.
   -v, --verbose                     Verbose output (show actual sqlite3 command).
@@ -144,6 +144,7 @@ OPTIONS:
   -r, --recurse-path [dir]          Show commands executed inside and under the directory dir.
   -t, --time-search [start],[end]   Search commands from start date to end date, GNU date syntax.
   -m, --max-count [n+]              N numbers of latest commands to show. Use + for maximum value.
+  -A, --ascending                   Sort the output in an ascending manner (Descending is the default).
   -n, --numeric-status [n+]         Show commands that exited with the nth status or + if greater than zero.
 
 A newly open shell does not have  any commands to show unless the -a option is specified which
@@ -256,9 +257,8 @@ if "${SDB_HISTORY:-true}"; then
   elif ! builtin type -P base64 >/dev/null; then
     builtin printf '%s: %s\n' "$__sdb_name_" "base64 is either not installed or it is not in your PATH!" >&2
     builtin return 127
-  else
-    __sdb_salt=$(builtin command dd if=/dev/urandom bs=32 count=1 2>/dev/null | builtin command base64)
   fi
+  __sdb_salt=$(builtin command -p dd if=/dev/urandom bs=32 count=1 2>/dev/null | builtin command -p base64)
 
   __sdb_initialized=0
 
@@ -271,17 +271,17 @@ if "${SDB_HISTORY:-true}"; then
 
   __sdb_file=${SDB_DATABASE:-$HOME/.bash_history.sqlite}
 
-  if builtin type -P sqlite3 >/dev/null; then
-    __sdb_sqlite() {
-      builtin command -p sqlite3 "$__sdb_file" "$@"
-    }
-  else
+  if ! builtin type -P sqlite3 >/dev/null; then
     builtin printf '%s: %s\n' "$__sdb_name_" 'sqlite3 is either not installed or it is not in your PATH' >&2
     builtin return 127
   fi
+  __sdb_sqlite() {
+    builtin command -p sqlite3 "$__sdb_file" "$@"
+  }
+
 
   __sdb_init() {
-    builtin local sql='CREATE TABLE history (
+    builtin local sql='CREATE TABLE IF NOT EXISTS history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     hist_id INTEGER,
     cmd TEXT,
@@ -291,6 +291,14 @@ if "${SDB_HISTORY:-true}"; then
     user_hosts TEXT,
     pwd TEXT,
     salt TEXT
+    );
+    CREATE TABLE IF NOT EXISTS directories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    epoch INTEGER,
+    ppid INTEGER,
+    user_hosts TEXT,
+    cwd TEXT,
+    salt TEXT
     );'
 
     if [[ ! -f "$__sdb_file" ]]; then
@@ -298,6 +306,35 @@ if "${SDB_HISTORY:-true}"; then
     fi
   }
 
+  if ! builtin type -P whoami >/dev/null; then
+    builtin printf '%s: %s\n' "$__sdb_name_" "whoami is either not installed or it is not in your PATH!" >&2
+    builtin return 127
+  elif ! builtin type -P uname >/dev/null; then
+    builtin printf '%s: %s\n' "$__sdb_name_" "uname is either not installed or it is not in your PATH!" >&2
+    builtin return 127
+  fi
+  __sdb_logname_=$(builtin command -p whoami)
+  __sdb_hostname_=$(builtin command -p uname -n)
+  __sdb_user_host=${__sdb_logname_:-Anonymous}@${__sdb_hostname_:-Nohost}
+
+  if [[ -f $__sdb_file ]]; then
+    __sdb_sqlite <<-EOF
+	INSERT INTO directories(
+	epoch,
+	ppid,
+	user_hosts,
+	cwd,
+	salt
+	)
+	VALUES(
+	"$(builtin command -p date -d 'now' '+%s')",
+	"$PPID",
+	"$__sdb_user_host",
+	"${__sdb_pwd//\"/\"\"}",
+	"$__sdb_salt"
+	);
+	EOF
+  fi
 
   __sdb_prompt() {
     Last_Command=$?
@@ -314,7 +351,6 @@ if "${SDB_HISTORY:-true}"; then
     if ((!__sdb_does_not_exists)); then
       if [[ ! -f $__sdb_file ]]; then
         __sdb_warn_ "It looks like $__sdb_file does not exists, please verify it." "run: file $__sdb_file"
-        __sdb_does_not_exists=1
         builtin return 1
       fi
     fi
@@ -322,7 +358,6 @@ if "${SDB_HISTORY:-true}"; then
     if ((!__sdb_empty_data_base)); then
       if [[ ! -s $__sdb_file  ]]; then
         __sdb_warn_ "It looks like $__sdb_file is empty, please verify it." "run: file $__sdb_file"
-        __sdb_empty_data_base=1
         builtin return 1
       fi
     fi
@@ -331,7 +366,6 @@ if "${SDB_HISTORY:-true}"; then
       builtin return
     fi
 
-    __sdb_user_host=
     builtin local IFS=
     builtin local num=
     builtin local pwd=
@@ -345,6 +379,7 @@ if "${SDB_HISTORY:-true}"; then
     builtin local hostname=
     builtin local command__=
     builtin local previous_cmd=
+    builtin local previous_cwd=
     builtin local recent_command=
     builtin local latest_hist_id=
     builtin local uncaptured_pwd=
@@ -360,29 +395,36 @@ if "${SDB_HISTORY:-true}"; then
     builtin local previous_user_hosts=
     pwd=$(builtin pwd)
     pwd=${pwd//$'\n'/\\n}
-
-    if builtin type -P whoami >/dev/null; then
-      logname=$(builtin command -p whoami)
-    fi
-    if builtin type -P uname >/dev/null; then
-      hostname=$(builtin command -p uname -n)
-    fi
-
-    __sdb_user_host=${logname:-Anonymous}@${hostname:-Nohost}
     __sdb_pwd=$(builtin pwd)
     __sdb_pwd=${__sdb_pwd//$'\n'/\\n}
-
-    if [[ ${__sdb_oldpwd[-1]} != "$__sdb_pwd" ]]; then
+    if [[ ${__sdb_oldpwd[-1]} != $__sdb_pwd ]]; then
       pwd=${__sdb_oldpwd[-1]}
-     __sdb_oldpwd+=("$__sdb_pwd")
+      __sdb_oldpwd+=("$__sdb_pwd")
     fi
+
+    __sdb_sqlite <<-EOF
+	INSERT INTO directories(
+	epoch,
+	ppid,
+	user_hosts,
+	cwd,
+	salt
+	)
+	VALUES(
+	"$(builtin command -p date -d 'now' '+%s')",
+	"$PPID",
+	"$__sdb_user_host",
+	"${__sdb_pwd//\"/\"\"}",
+	"$__sdb_salt"
+	);
+	EOF
 
 # ******************************************************************************************** #
 #  A hack to capture commands like "exec rm file" or "source  ~/.bashrc" by parsing history 2  #
 # ******************************************************************************************** #
 
     regexp='[[:space:]]+([[:digit:]]+)[[:space:]]+([[:digit:]]+)[[:space:]](.+)'
-    uncaptured_reg='source|exec[[:space:]]+[[:alpha:]]+.*'
+    uncaptured_reg='^.*[[:space:]]*(source|exec)[[:space:]]+.*'
     while builtin read -r history2_output
       IFS=$'\n' builtin read -rd '' history1_output; do
       builtin return
@@ -397,42 +439,32 @@ if "${SDB_HISTORY:-true}"; then
           builtin read -r uncaptured_ppid
           builtin read -r previous_user_hosts
           builtin read -r previous_cmd
-          builtin read -r previous_pwd
-          builtin read -r previous_epoch; do
+          builtin read -r previous_epoch
+          builtin read -ru8 previous_cwd; do
           break
         done < <(
-          __sdb_sqlite ".sep \n" "SELECT salt,ppid,user_hosts,cmd,pwd,epoch FROM history WHERE
-          user_hosts = '$__sdb_user_host' AND epoch <= '$uncaptured_epoch' ORDER BY ID DESC LIMIT 1;"
-        )
-        if [[ $uncaptured_command != $previous_cmd && $__sdb_user_host = $previous_user_hosts ]]; then
-          if ! type -P realpath >/dev/null; then
-             __sdb_warn_ 'realpath is either not installed or it is not in your PATH' 'Fix the issue and try again.'
-            builtin return 1
-          fi
-          if shopt -q autocd; then
-            if [[ -d "$(builtin command -p realpath -q "${previous_cmd% *}")" ]]; then
-              previous_pwd=$(builtin command -p realpath -q "${previous_cmd% *}")
-            fi
-          fi
-          if [[ ${previous_cmd% *} = cd ]]; then
-            previous_pwd=$(builtin command -p realpath -q "${previous_cmd#* }")
-          fi ## $previous_pwd is incorrect if you have a wrapper function that is calling cd,popd or pushd which
-             ## changes the pwd and immediately run 'source ~/bashrc' or 'exec rm file' and immediately cd to somewhere
-        __sdb_sqlite <<-END
-				INSERT INTO history(
-					hist_id, epoch, cmd, ppid, exit_status, user_hosts, pwd, salt
-				)
-				VALUES(
-				"$uncaptured_num",
-				"$uncaptured_epoch",
-				"$uncaptured_command",
-				"$uncaptured_ppid",
-				"0",
-				"$__sdb_user_host",
-				"$previous_pwd",
-				"$uncaptured_salt"
-				);
-				END
+          __sdb_sqlite ".sep \n" "SELECT salt,ppid,user_hosts,cmd,epoch FROM history WHERE
+          user_hosts = '$__sdb_user_host' AND epoch < '$uncaptured_epoch' ORDER BY ID DESC LIMIT 1;"
+          ) 8< <(
+            __sdb_sqlite "SELECT cwd FROM directories WHERE
+            user_hosts = '$__sdb_user_host' AND epoch < '$uncaptured_epoch' AND ppid < '$uncaptured_ppid' ORDER BY ID DESC LIMIT 1;"
+            )
+        if [[ $previous_cmd != $uncaptured_command ]]; then
+     __sdb_sqlite <<-END
+	INSERT INTO history(
+	hist_id, epoch, cmd, ppid, exit_status, user_hosts, pwd, salt
+	)
+	VALUES(
+	"$uncaptured_num",
+	"$uncaptured_epoch",
+	"${uncaptured_command//\"/\"\"}",
+	"$uncaptured_ppid",
+	"0",
+	"$__sdb_user_host",
+	"${previous_cwd//\"/\"\"}",
+	"$uncaptured_salt"
+	);
+	END
         fi
       fi
     fi
@@ -475,21 +507,21 @@ if "${SDB_HISTORY:-true}"; then
 
     while builtin read -r command__ <&8; do
       __sdb_sqlite <<-END
-			INSERT INTO history(
-				hist_id, epoch, cmd, ppid, exit_status, user_hosts, pwd, salt
-			)
-			VALUES(
-			"${num:-"$latest_hist_id"}",
-			"${epoch:-"$(builtin command -p date -d 'now' '+%s')"}",
-			"${command__//\"/\"\"}",
-			"$PPID",
-			"${Last_Command:-777}",
-			"$__sdb_user_host",
-			"${pwd//\"/\"\"}",
-			"$__sdb_salt"
-			);
-			END
-    done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}"  || builtin return
+	INSERT INTO history(
+	hist_id, epoch, cmd, ppid, exit_status, user_hosts, pwd, salt
+	)
+	VALUES(
+	"${num:-"$latest_hist_id"}",
+	"${epoch:-"$(builtin command -p date -d 'now' '+%s')"}",
+	"${command__//\"/\"\"}",
+	"$PPID",
+	"${Last_Command:-777}",
+	"$__sdb_user_host",
+	"${pwd//\"/\"\"}",
+	"$__sdb_salt"
+	);
+	END
+    done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}" || builtin return
 
     __sdb__executioner__
   }
@@ -505,6 +537,7 @@ if "${SDB_HISTORY:-true}"; then
      builtin local rpath=0
      builtin local begin=0
      builtin local max=100
+     builtin local ascend=0
      builtin local execute=0
      builtin local verbose=0
      builtin local offpager=0
@@ -548,10 +581,12 @@ if "${SDB_HISTORY:-true}"; then
      builtin local time_search1=
      builtin local time_search2=
      builtin local execute_var0=
+     builtin local regexpath=[./]
      builtin local both_user_host=
      builtin local __sdb_execute_var=
      builtin local first_sql_commands=
      builtin local numeric_status_value=
+     builtin local sorting=DESC
      builtin local name=$__sdb_name_
      builtin local comm0='----------------+'
      builtin local comm1='   COMMAND      |'
@@ -570,7 +605,7 @@ if "${SDB_HISTORY:-true}"; then
 # Getops from scratch by D.J. Mills, https://github.com/e36freak/templates/blob/master/options #
 # ******************************************************************************************** #
 
-     optstring=acdlosvMSb:e:h:m:n:u:w:r:t:p:E:
+     optstring=acdlosvAMSb:e:h:m:n:u:w:r:t:p:E:
 
      builtin unset options
 
@@ -635,6 +670,9 @@ if "${SDB_HISTORY:-true}"; then
            else
              max=$1
            fi
+           ;;
+         --ascending|-A)
+           ascend=1
            ;;
          --all|-a)
            all=1
@@ -718,7 +756,7 @@ if "${SDB_HISTORY:-true}"; then
            if [[ -z $1 ]]; then
              __sdb_warn_ "path requires a value!" "Try '$__sdb_name_ --help'"
              builtin return 1
-           elif [[ $1 = @('.'|'./'|'..'|'../') ]]; then
+           elif [[ $1 =~ $regexpath ]]; then
              if builtin type -P realpath >/dev/null; then
                rpathquery=$(builtin command -p realpath -- "$1")
              else
@@ -736,7 +774,7 @@ if "${SDB_HISTORY:-true}"; then
            if [[ -z $1 ]]; then
              __sdb_warn_ "path requires a value!" "Try '$__sdb_name_ --help'"
              builtin return 1
-           elif [[ $1 = @('.'|'./'|'..'|'../') ]]; then
+           elif [[ $1 =~ $regexpath ]]; then
              if builtin type -P realpath >/dev/null; then
                pathquery=$(builtin command -p realpath -- "$1")
              else
@@ -866,8 +904,8 @@ if "${SDB_HISTORY:-true}"; then
        if ((__sdb_edit)); then
          builtin trap '> "/dev/fd/$tempfile"' return
          builtin trap 'builtin exit 1' 1 2 3 15
-					builtin exec {tempfile}<<-EOF
-					EOF
+		builtin exec {tempfile}<<-EOF
+		EOF
          builtin printf '%s\n' "${execute_var0%"|"*}" > "/dev/fd/$tempfile"
          "${EDITOR:-vim}" "/dev/fd/$tempfile"
          while IFS= builtin read -u9 -r __sdb_evalcommands; do
@@ -1007,11 +1045,15 @@ if "${SDB_HISTORY:-true}"; then
        comm1='    COMMAND    |'
      fi
 
-     sql_commands+=("ORDER BY max(id) DESC LIMIT $max;")
+     if ((ascend)); then
+       sorting=ASC
+     fi
+
+     sql_commands+=("ORDER BY max(id) $sorting LIMIT $max;")
 
      __sdb__main_funct__() {
        if ((verbose)); then
-         builtin printf '%s%s%s\n' "sqlite3 "  "${__sdb_file% *}" "${sql_commands[*]}"
+         builtin printf '%s%s%s\n' "sqlite3 " "${__sdb_file% *}" "${sql_commands[*]}"
          builtin printf '\n'
        fi
 
@@ -1026,8 +1068,8 @@ if "${SDB_HISTORY:-true}"; then
      if ((!offpager)); then
        builtin trap '> "/dev/fd/$tempfile"' return
        builtin trap 'builtin exit 1' 1 2 3 15
-				builtin exec {tempfile}<<-EOF
-				EOF
+		builtin exec {tempfile}<<-EOF
+		EOF
        __sdb__main_funct__ > "/dev/fd/$tempfile" 2>&1 || builtin return
        if [[ $PAGER  = less ]]; then
          builtin command -p "$PAGER" -Ss "/dev/fd/$tempfile" || builtin return

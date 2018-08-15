@@ -1,37 +1,53 @@
-Version 3.0.1 Release note of sdb.
+Version 3.2.2 Release note of sdb.
 
-======================================================================================================================================
+============================================================================================================================================
 
-This is a release note from version  3.0.1 if you're migrating  from a previous release prior to 2.0.0 please use the
-migratedb script to migrate the previous database/table that is missing a user_host column. As always as a godd practice
+This is a release note from version  3.2.2 if you're migrating  from a previous release prior to 2.0.0 please use the
+migratedb script to migrate the previous database/table that is missing a user_host column.  As always as a godd practice
 before doing some editing ALWAYS create a BACKUP of the file you're editing regardless of how/what/when/where.
 
+============================================================================================================================================
 
-Remove the leading white space from the previous column user_hosts assuming the default location of the database has not been changed.
+Remove the leading white space from the previous column user_hosts.
 
-sqlite3 ~/bash_history.sqlite "UPDATE  history SET user_hosts=LTRIM(user_hosts);"
+__sdb_sqlite "UPDATE  history SET user_hosts=LTRIM(user_hosts);"
 
-======================================================================================================================================
+============================================================================================================================================
+
+If you're using sdb prior to 3.2.2 the table directories does not exists yet, to create please source the create_table_directories file.
+
+If the file is in the current pwd.
+
+source ./create_table_directories
+
+If the file is somewhere else.
+
+source /path/to/somewhere/else/create_table_directories
+
+============================================================================================================================================
 
 IMPROVEMENTS
 
 -  Capture and insert commands such as ''exec bash'' and ''source ~/.bashrc''
 -  Replace a newline with a literal ''\n'' for directory names that has newlines.
+-  Add new table directories to store directories in advance.
 
-======================================================================================================================================
+============================================================================================================================================
 
 FIXES
 
 -  Newlines ''$'\n''' in directory names in not inserted in the database.
--  realpath error for testing commands that are not directories/path.
+-  Fix the pattern for the dotted directories when searching for path using "realpath" for the commands.
+-  Fix the regex for the problematic commands. (exec and source)
 
-======================================================================================================================================
+============================================================================================================================================
 
 CAVEATS
 
--  Directory where commands such as ''exec bash'' or ''source ~/.bashrc'' is executed not perfect there are coner cases where it fails.
+-  Directory where commands such as ''exec bash'' or ''source ~/.bashrc'' is executed is not perfect there are coner cases where it fails.
+  * See the git log for more info about the wrong pwd.
 -  Requires some external GNU tools/utilities that is not builtin from the shell. (Welcome to the shell)
 -  Commands from the database are re-executed using the builtin eval command from bash. (no other easy alternative by the shell alone)
 -  Sql injection is always a possibility. (Yes, I know, mum says not to use the shell for a database!)
 
-======================================================================================================================================
+============================================================================================================================================

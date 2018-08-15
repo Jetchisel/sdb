@@ -1,0 +1,40 @@
+# ******************************************************************************************** #
+#         Sqlite3 commands to create a table named directories saved in a variable.            #
+# ******************************************************************************************** #
+
+__sdb_create_table_directories="CREATE TABLE directories(
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+epoch INTEGER,
+ppid INTEGER,
+user_hosts TEXT,
+cwd TEXT,
+salt TEXT
+);
+INSERT INTO directories(
+epoch,
+ppid,
+user_hosts,
+cwd,
+salt
+)
+SELECT epoch,ppid,user_hosts,pwd,salt FROM history WHERE user_hosts = '$__sdb_user_host';"
+
+# ******************************************************************************************** #
+#           Returns 0 if there is no table name directories otherwise it returns 1.            #
+# ******************************************************************************************** #
+
+__sdb_check_table=$(__sdb_sqlite "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='directories';")
+
+# ******************************************************************************************** #
+#                           Create the table if it does not exists.                            #
+# ******************************************************************************************** #
+
+if ((!__sdb_check_table)); then
+  printf 'Creating table "directories"...%s\n'
+  __sdb_sqlite <<< "$__sdb_create_table_directories"
+  printf 'Done...%s\n'
+else
+  printf 'A table named "directories" already exists!%s\n'
+fi
+
+# vim:ft=sh
