@@ -1,0 +1,80 @@
+# ============================================================================================ #
+#: Title           : create_column_tty                                                         #
+#: Sypnosis        : source ./create_column_tty                                                #
+#: Date Created    : Sat 29 Jul 2018 13:41:43 PM +08  /  Sat Jul 29 05:41:43 UTC 2018          #
+#: Last Edit       : Sun 26 Aug 2018 13:27:22 PM +08  /  Sun Aug 26 05:27:22 UTC 2018          #
+#: License         : MIT                                                                       #
+#: Version         : 1.0.0                                                                     #
+#: Author          : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
+#: Description     : Add a new tty column from the existing history table of sdb.              #
+#: Options         : NONE                                                                      #
+#: Home Page       : https://github.com/Jetchisel/sdb                                          #
+#: ExtComm         : sdb                                                                       #
+# ============================================================================================ #
+
+# ******************************************************************************************** #
+# Sqlite3 commands to create a new column tty in the existing history table, in bash variable. #
+# ******************************************************************************************** #
+
+create_new_column_tty="ALTER TABLE history RENAME TO history_tmp;
+CREATE TABLE history(
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+hist_id INTEGER,
+cmd TEXT,
+epoch INTEGER,
+ppid INTEGER,
+exit_status INTEGER,
+tty TEXT DEFAULT NULL,
+user_hosts TEXT,
+pwd TEXT,
+salt TEXT
+);
+INSERT INTO history(
+id,
+hist_id,
+cmd,
+epoch,
+ppid,
+exit_status,
+user_hosts,
+pwd,
+salt
+)
+SELECT id, hist_id, cmd, epoch, ppid, exit_status, user_hosts, pwd, salt FROM history_tmp;
+DROP TABLE history_tmp;"
+
+# ******************************************************************************************** #
+#                  Recreate the history table with a new column tty in it.                     #
+# ******************************************************************************************** #
+
+builtin printf '%s\n' "Creating new table with a new column 'tty'"
+  __sdb_sqlite <<< "$create_new_column_tty"
+builtin printf 'Done%s\n'
+
+# ******************************************************************************************** #
+#            The tty/pts value without leading dev and slashes for the new column tty.         #
+# ******************************************************************************************** #
+
+pts=$(builtin command -p tty)
+pts=${pts#*dev}
+pts=${pts//\/}
+
+# ******************************************************************************************** #
+#              Populate the new column tty with the current value of tty command.              #
+# ******************************************************************************************** #
+
+builtin printf 'Updating tty column to %s\n' "'$pts'"
+  update_tty="UPDATE history SET tty = '$pts';"
+  __sdb_sqlite <<< "$update_tty"
+builtin printf 'Done%s\n'
+
+# ******************************************************************************************** #
+#    Unset the variables so it will not collide with something/somewhere else just in case.    #
+# ******************************************************************************************** #
+
+builtin unset create_new_column_tty pts update_tty
+
+# vim:ft=sh
+# ============================================================================================ #
+#                                   >>> END OF SCRIPT <<<                                      #
+# ============================================================================================ #
