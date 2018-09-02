@@ -1,4 +1,4 @@
-Version 3.3.3 Release note of sdb.
+Version 3.4.3 Release note of sdb.
 
 ============================================================================================================================================
 
@@ -48,6 +48,8 @@ IMPROVEMENTS
 -  Replace a newline with a literal ''\n'' for directory names that has newlines.
 -  Add new table directories to store directories in advance.
 -  Add new column tty in the history table.
+-  Add a Human Readable time format when searching for time/date.
+-  Use the native sqlite command when inserting an epoch date, instead of using date(1).
 
 ============================================================================================================================================
 

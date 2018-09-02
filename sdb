@@ -2,12 +2,12 @@
 #: Title           : sdb                                                                       #
 #: Sypnosis        : sdb [OPTIONS]... [QUERY]...                                               #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Sun 26 Aug 2018 13:57:42 PM +08  /  Sun Aug 26 05:57:42 UTC 2018          #
+#: Last Edit       : Sun 02 Sep 2018 10:58:19 AM +08  /  Sun Sep  2 02:58:19 UTC 2018          #
 #: License         : MIT                                                                       #
-#: Version         : 3.3.3                                                                     #
+#: Version         : 3.4.3                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
 #: Description     : Log bash_history in a database (A fork of dbhist.sh by Dennis Gladkikh)   #
-#: Options         : [abcdehlmnoprsuvwAEMS?]                                                   #
+#: Options         : [abcdehlmnoprsuvwAEMST?]                                                  #
 #: Home Page       : https://github.com/Jetchisel/sdb                                          #
 #: ExtComm         : base64,date,dd,less,mktemp,whoami,realpath,rm,sqlite3,tput,uname          #
 #: Copyright       : Jason V. Ferrer 2017-2018                                                 #
@@ -126,106 +126,119 @@ Without any options/arguments the default is to show the recent commands
 if there is/are any in the current session. (sdb commands excluded by default.)
 
 OPTIONS:
-  -c, --common-info                 Implies -hudl.
-  -?, --help                        Show this help.
-  -s, --self                        Include history about sdb.
-  -u, --user [word]                 Show user that matches word.
-  -h, --host [word]                 Show the host that matches word.
-  -E, --execute-id [n]              Execute the command with the nth id.
-  -l, --last-status                 Show the exit status of the commands.
-  -e, --end-with [word]             Match only commands that ends with word.
-  -b, --begin-with [word]           Match only commands that starts with word.
-  -d, --directory                   Show the working directory of the commands.
-  -v, --verbose                     Verbose output (show actual sqlite3 command).
-  -M, --mode-line                   Print the output as if ".mode line" is enabled.
-  -w, --with-word [word]            Match commands with word from beginning to end.
-  -p, --path [dir]                  Show commands executed inside the directory dir.
-  -a, --all                         Include history of all sessions. Not only current.
-  -o, --other-users                 Show All other users besides the current user (if any)
-  -S, --shell                       Access to the sqlite3 shell and load the shell database.
-  -r, --recurse-path [dir]          Show commands executed inside and under the directory dir.
-  -t, --time-search [start],[end]   Search commands from start date to end date, GNU date syntax.
-  -m, --max-count [n+]              N numbers of latest commands to show. Use + for maximum value.
-  -A, --ascending                   Sort the output in an ascending manner (Descending is the default).
-  -n, --numeric-status [n+]         Show commands that exited with the nth status or + if greater than zero.
+  -c, --common-info                     Implies -hudl.
+  -?, --help                            Show this help.
+  -s, --self                            Include history about sdb.
+  -u, --user [word]                     Show user that matches word.
+  -h, --host [word]                     Show the host that matches word.
+  -E, --execute-id [n]                  Execute the command with the nth id.
+  -l, --last-status                     Show the exit status of the commands.
+  -e, --end-with [word]                 Match only commands that ends with word.
+  -b, --begin-with [word]               Match only commands that starts with word.
+  -d, --directory                       Show the working directory of the commands.
+  -v, --verbose                         Verbose output (show actual sqlite3 command).
+  -M, --mode-line                       Print the output as if ".mode line" is enabled.
+  -w, --with-word [word]                Match commands with word from beginning to end.
+  -p, --path [dir]                      Show commands executed inside the directory dir.
+  -a, --all                             Include history of all sessions. Not only current.
+  -o, --other-users                     Show All other users besides the current user (if any)
+  -S, --shell                           Access to the sqlite3 shell and load the shell database.
+  -r, --recurse-path [dir]              Show commands executed inside and under the directory dir.
+  -T, --time-search-epoch [start],[end] Search commands from start date to end date (shows epoch).
+  -t, --time-search [start],[end]       Search commands from start date to end date (Human readable).
+  -m, --max-count [n+]                  N numbers of latest commands to show. Use + for maximum value.
+  -A, --ascending                       Sort the output in an ascending manner (Descending is the default).
+  -n, --numeric-status [n+]             Show commands that exited with the nth status or + if greater than zero.
 
-A newly open shell does not have  any commands to show unless the -a option is specified which
-defaults to 100 lines, unless the -m option is specified.
+  A newly open shell does not have  any commands to show unless the -a option is specified which defaults to 100
+  lines, unless the -m option is specified.
 
-The date/time format is in Unix epoch time. GNU date has some option to convert that into human
-readable format. It also has an option which allows you to say things like today, now, yesterday
--1 month, etc. The -t or --time-search make use of this words. The format is "startdate, end date"
-It should be separated by a comma. The start date should always come first followed by the end date.
-Both arguments needs to be quoted together, otherwise the shell will see it as two arguments.
+DATE/TIME
+  The date/time format  is in Unix epoch time. GNU date has some  option to convert that into human readable format.
+  It also has an option  which allows you to say things like  today, now, yesterday, -1 month, last year  and so on.
+  The -[tT] or --time-search-[epoch] make use of those words. The format is "startdate,end date" [lower|upper] bound
+  It should be separated by a comma. Start date should always  come first followed by the end  date. Both arguments
+  needs to be quoted together, otherwise the shell will see it as two arguments.
 
-Examples of searching by date.
+EXAMPLES
+  search between yesterday and now.
 
-   search between yesterday and now.
+  "yesterday, now"
 
-    "yesterday, now"
+  search between yesterday and an hour ago
 
-   search between yesterday and an hour ago
+  "-1 day, -1 hour"
 
-   "-1 day, -1 hour"
+  search between a year ago and today.
 
-   search between a year ago and today.
+  "1 year ago, today"
 
-   "1 year ago, today"
+  search between last tuesday and a minute ago.
 
-   search between last tuesday and a minute ago.
+  "last tuesday, -1 minute"
 
-   "last tuesday, -1 minute"
+  The -t option shows the Human readable time format because 99.9% of general Human population cannot convert the
+  raw epoch time format into a human readable one without blinking an eye or twitching a muscle :-).
 
-See the manual for more info on GNU date(1).
+  See the manual for more info on GNU date(1).
 
-For maximum query use + instead of [n] when the -m or --max-count is specified.
-The value of [n] becomes 999999999999999999, Which translates to:
+QUERY
+  For maximum query use + instead of [n] when the -m or --max-count is specified.
+  The value of [n] becomes 999999999999999999, Which translates to:
 
-    Nine hundred ninety-nine quadrillion.
-    Nine hundred ninety-nine trillion.
-    Nine hundred ninety-nine billion.
-    Nine hundred ninety-nine million.
-    Nine hundred ninety-nine thousand.
-    Nine hundred ninety-nine.
+  Nine hundred ninety-nine quadrillion.
+  Nine hundred ninety-nine trillion.
+  Nine hundred ninety-nine billion.
+  Nine hundred ninety-nine million.
+  Nine hundred ninety-nine thousand.
+  Nine hundred ninety-nine.
 
-Long options that takes an argument also supports the following syntax:
+WILD CARD PATTERNS
+  When searching for the commands one may consider using the wild cards.
+  Use the -v|--verbose option to see which pattern it matches.
+  The % in sqlite is like glob * in the shell
+  The _ in sqlite is like ? in the shell which matches any single character.
 
-    --option=argument
+USING THE OPTIONS
+  Long options that takes an argument also supports the following syntax:
 
-Short options that does not take an argument can be joined as one option:
+  --option=argument
 
-    -adlsv
+  Short options that does not take an argument can be joined as one option:
 
-Both short and long option can be used as well.
+  -adlsv
 
-    --option=argument -acv -m+
+  Both short and long option can be used as well.
 
-Redirect the output to a file use the redirection "greater than" > sign.
+  --option=argument -acv -m+
 
-    sdb -vcam+ > file
+  Redirect the output to a file use the redirection "greater than" > sign.
 
-The PAGER and EDITOR  environment  variables is used/accepted when doing a
-search/query/edit for the commands. PAGER defaults to  whatever the system
-is using. EDITOR defaults to vim if empty.
+  sdb -vcam+ > file
 
-    PAGER=kate sdb -vcam+
+PAGER/EDITOR
+  The PAGER and EDITOR  environment  variables is used/accepted when doing a
+  search/query/edit for the commands. PAGER defaults to  whatever the system
+  is using. EDITOR defaults to vim if empty.
 
-    EDITOR=nano sdb -E 101
+  PAGER=kate sdb -vcam+
 
-Some editors like gvim does not work by default without some options.
-create a function first.
+  EDITOR=nano sdb -E 101
 
-    gvim() { builtin command -p gvim -f "$@"; }
+  Some editors like gvim does not work by default without some options.
+  create a function first.
 
-    PAGER=gvim sdb -vcam+
+  gvim() { builtin command -p gvim -f "$@"; }
 
-THE ORDER OF COLUMNS
+  PAGER=gvim sdb -vcam+
+
+THE FULL ORDER OF COLUMNS
    1rst column: ID column, increment of all the executed commands.
    2nd  column: Number of times the commands has been executed.
    3rd  column: Specified by -[hu], shows the user & host.
    4rth column: Date and time of the executed commands.
    5th  column: Specified by the -l option shows the exit status.
-   6th  column: Shows which tty the commands has be executed .
+   6th  column: Shows which "tty" the commands has be executed .
    7th  column: Specified by the -d option shows the pwd.
    last column: Commands, separated by a > from the path column.
 
@@ -237,12 +250,12 @@ NOTE
    question.
 
 SEE ALSO
-       sqlite3(1), signal(7), date(1)
-       https://www.sqlite.org/index.html
-       The "EXIT STATUS" section from bash(1).
+   sqlite3(1), signal(7), date(1)
+   https://www.sqlite.org/index.html
+   The "EXIT STATUS" section from bash(1).
 
 AUTHOR
-     Jason V. Ferrer <jetchisel@opensuse.org>
+   Jason V. Ferrer <jetchisel@opensuse.org>
 EOF
 builtin return
 }
@@ -316,7 +329,7 @@ if "${SDB_HISTORY:-true}"; then
 
   __sdb_logname_=$(builtin command -p whoami)
   __sdb_hostname_=$(builtin command -p uname -n)
-  __sdb_user_host=${__sdb_logname_:-Anonymous}@${__sdb_hostname_:-Nohost}
+  __sdb_user_host=${__sdb_logname_:-"$LOGNAME"}@${__sdb_hostname_:-"$HOST"}
 
 # ******************************************************************************************** #
 #             Save the previous/recent cwd in the directories table in a variable.             #
@@ -332,8 +345,12 @@ if "${SDB_HISTORY:-true}"; then
 
   if [[ -f $__sdb_file && $(__sdb_recent_pwd) != $__sdb_pwd ]]; then
     __sdb_sqlite <<-EOF
-	INSERT INTO directories( epoch, ppid, user_hosts, cwd, salt )
-	VALUES( "$(builtin command -p date -d 'now' '+%s')", "$PPID", "$__sdb_user_host", "${__sdb_pwd//\"/\"\"}", "$__sdb_salt" );
+	INSERT INTO directories (
+	epoch, ppid, user_hosts, cwd, salt
+	)
+	VALUES (
+	STRFTIME ('+%s', 'now'), "$PPID", "$__sdb_user_host", "${__sdb_pwd//\"/\"\"}", "$__sdb_salt"
+	);
 	EOF
   fi
 
@@ -419,16 +436,18 @@ if "${SDB_HISTORY:-true}"; then
       __sdb_oldpwd+=("$__sdb_pwd")
     fi
 
-    builtin declare -a limit
-
 # ******************************************************************************************** #
 # Insert into the directories table everytime we hit ze return key. Just to know where we are. #
 # ******************************************************************************************** #
 
   if [[ $(__sdb_recent_pwd) != $__sdb_pwd ]]; then
     __sdb_sqlite <<-EOF
-	INSERT INTO directories( epoch, ppid, user_hosts, cwd, salt )
-	VALUES( "$(builtin command -p date -d 'now' '+%s')", "$PPID", "$__sdb_user_host", "${__sdb_pwd//\"/\"\"}", "$__sdb_salt" );
+	INSERT INTO directories (
+	epoch, ppid, user_hosts, cwd, salt
+	)
+	VALUES (
+	STRFTIME ('+%s', 'now'), "$PPID", "$__sdb_user_host", "${__sdb_pwd//\"/\"\"}", "$__sdb_salt"
+	);
 	EOF
   fi
 
@@ -438,7 +457,10 @@ if "${SDB_HISTORY:-true}"; then
 
     regexp='[[:space:]]+([[:digit:]]+)[[:space:]]+([[:digit:]]+)[[:space:]](.+)'
     uncaptured_reg='^.*[[:space:]]*(source|exec)[[:space:]]+.*'
-    { builtin read -r history2_output; IFS=$'\n' builtin read -rd '' history1_output; } < <(builtin history 2)
+    while builtin read -r history2_output
+      IFS=$'\n' builtin read -rd '' history1_output; do
+      :
+    done < <(builtin history 2)
 
     if [[ ! -s /tmp/${__sdb_logname_}_sdb_last_status ]]; then
       if [[ $history2_output =~ $regexp ]]; then
@@ -551,6 +573,7 @@ if "${SDB_HISTORY:-true}"; then
      builtin local all=0
      builtin local end=0
      builtin local pwd=0
+     builtin local Hrt=0
      builtin local zero=0
      builtin local self=0
      builtin local path=0
@@ -606,7 +629,6 @@ if "${SDB_HISTORY:-true}"; then
      builtin local temporary_dir=
      builtin local temporary_file=
      builtin local both_user_host=
-     builtin local first_sql_commands=
      builtin local numeric_status_value=
      builtin local to_be_executed_by_eval=
      builtin local sorting=DESC
@@ -638,7 +660,7 @@ if "${SDB_HISTORY:-true}"; then
 # Getops from scratch by D.J. Mills, https://github.com/e36freak/templates/blob/master/options #
 # ******************************************************************************************** #
 
-     optstring=acdlosvAMSb:e:h:m:n:u:w:r:t:p:E:
+     optstring=acdlosvAMSb:e:h:m:n:u:w:r:t:p:E:T:
 
      builtin unset options
 
@@ -749,7 +771,11 @@ if "${SDB_HISTORY:-true}"; then
            OnlyHost=1
            HostOnly=%@${1}
            ;;
-         --time-search|-t)
+         --time-search|--time-search-epoch|-T|-t)
+           case $1 in
+             --time-search|-t)
+               Hrt=1;;
+           esac
            builtin shift
            if [[ -z $1 ]]; then
              __sdb_warn_ "Time requires two values, separated by a comma!" "Try '$__sdb_name_ --help'"
@@ -881,9 +907,9 @@ if "${SDB_HISTORY:-true}"; then
 # ******************************************************************************************** #
 
      if [[ -n $DISPLAY ]]; then
-       separator=" ▶  "
+       separator=' ▶  '
      else
-       separator=" >  "
+       separator=' >  '
      fi
 
 # ******************************************************************************************** #
@@ -955,23 +981,21 @@ if "${SDB_HISTORY:-true}"; then
 # ******************************************************************************************** #
 
      if ((exit_stat)); then
-       ExitStatus="substr('      '||max(exit_status),-6) ||
-           ' | '||"
+       ExitStatus="substr ('      '||max(exit_status),-6) || ' | ' ||"
        stat0='--------+'
        stat1=' STATUS |'
        stat2='--------+'
      fi
 
      if ((user_host)); then
-       User_Host="substr('             '||max(user_hosts),-20) ||
-           ' | '||"
+       User_Host="substr ('             '||max(user_hosts),-20) || ' | ' ||"
        user0='----------------------+'
        user1='      USER@HOST       |'
        user2='----------------------+'
      fi
 
      if ((pwd)); then
-       pwd_q="pwd || \"$separator\" ||"
+       pwd_q="pwd || '$separator' ||"
      fi
 
      if ((modeline)); then
@@ -980,16 +1004,12 @@ if "${SDB_HISTORY:-true}"; then
      else
        first_sql_commands="
         SELECT
-        substr('           '||max(id),-12) ||
-          ' | ' ||
-          substr('      '||count(*),-6) ||
-          ' | ' ||
-          datetime(max(epoch), 'unixepoch', 'localtime') ||
-          ' | ' ||
+          substr ('           '||max(id),-12) || ' | ' ||
+          substr ('      '||count(*),-6) || ' | ' ||
+          datetime (max (epoch), 'unixepoch', 'localtime') || ' | ' ||
           $User_Host
           $ExitStatus
-          substr('        '||max(tty),-7) ||
-          ' | '||
+          substr ('        '||max(tty),-7) || ' | ' ||
           $pwd_q"
      fi
 
@@ -1002,7 +1022,7 @@ if "${SDB_HISTORY:-true}"; then
      fi
 
      if ((!all)); then
-       sql_commands1=("AND (salt=\"$__sdb_salt\" AND ppid=\"$PPID\")")
+       sql_commands1=("AND (salt='$__sdb_salt' AND ppid='$PPID')")
      fi
 
      if ((!Others)); then
@@ -1014,29 +1034,29 @@ if "${SDB_HISTORY:-true}"; then
      fi
 
      if ((OnlyUser)); then
-       sql_commands4=("AND (user_hosts LIKE \"$UserOnly\")")
+       sql_commands4=("AND (user_hosts LIKE '$UserOnly')")
      fi
 
      if ((OnlyHost)); then
-       sql_commands5=("AND (user_hosts LIKE \"$HostOnly\")")
+       sql_commands5=("AND (user_hosts LIKE '$HostOnly')")
      fi
 
      if ((begin)); then
        query_begin=${query_begin//\"/\"\"}
        query_begin=$query_begin%
-       sql_commands6=("AND (cmd LIKE \"$query_begin\" ESCAPE '\')")
+       sql_commands6=("AND (cmd LIKE '$query_begin' ESCAPE '\')")
      fi
 
      if ((end)); then
        query_end=${query_end//\"/\"\"}
        query_end=%$query_end
-       sql_commands7=("AND (cmd LIKE \"$query_end\" ESCAPE '\')")
+       sql_commands7=("AND (cmd LIKE '$query_end' ESCAPE '\')")
      fi
 
      if ((whole_line)); then
        query_whole=${query_whole//\"/\"\"}
        query_whole=%$query_whole%
-       sql_commands8=("AND (cmd LIKE \"$query_whole\" ESCAPE '\')")
+       sql_commands8=("AND (cmd LIKE '$query_whole' ESCAPE '\')")
      fi
 
      if ((path)); then
@@ -1045,7 +1065,7 @@ if "${SDB_HISTORY:-true}"; then
          builtin return 1
        fi
        pathquery=${pathquery//\"/\"\"}
-       sql_commands9=("AND (pwd = \"$pathquery\")")
+       sql_commands9=("AND (pwd = '$pathquery')")
      fi
 
      if ((rpath)); then
@@ -1054,20 +1074,29 @@ if "${SDB_HISTORY:-true}"; then
           builtin return 1
         fi
         rpathquery=${rpathquery//\"/\"\"}
-       sql_commands10=("AND (pwd LIKE \"$rpathquery%\" ESCAPE '\')")
-     fi
-
-     if ((time_search)); then
-       sql_commands11=("AND (epoch BETWEEN $(builtin command -p date -d"${time_search0%,*}" "+%s") AND $(builtin command -p date -d"${time_search0#*,}" "+%s"))")
-       hrt=("AND (epoch BETWEEN [$(builtin command -p date -d"${time_search0%,*}" "+%F %T")] AND [$(builtin command -p date -d"${time_search0#*,}" "+%F %T")])")
+       sql_commands10=("AND (pwd LIKE '$rpathquery%' ESCAPE '\')")
      fi
 
      if ((numeric_status)); then
        if [[ $numeric_status_value = + ]]; then
-         sql_commands12=("AND (exit_status > '0')")
+         sql_commands11=("AND (exit_status > '0')")
        else
-         sql_commands12=("AND (exit_status = $numeric_status_value)")
+         sql_commands11=("AND (exit_status = '$numeric_status_value')")
        fi
+     fi
+
+     if ((time_search && ! Hrt)); then
+       sql_commands12=(
+         "AND (epoch BETWEEN $(builtin command -p date -d"${time_search0%,*}" "+%s") AND $(builtin command -p date -d"${time_search0#*,}" "+%s"))"
+         )
+      fi
+
+      if ((time_search && Hrt)); then
+        sql_commands12=(
+         "AND date(datetime(epoch, 'unixepoch', 'localtime'))
+          BETWEEN date('$(builtin command -p date -d"${time_search0%,*}" "+%F %T")')
+            AND   date('$(builtin command -p date -d"${time_search0#*,}" "+%F %T")')"
+        )
      fi
 
      sql_commands13=("GROUP BY cmd,exit_status,tty,user_hosts")
@@ -1085,33 +1114,40 @@ if "${SDB_HISTORY:-true}"; then
 
      sql_commands15=("ORDER BY max(id) $sorting LIMIT $max;")
 
-     sql_commands=( ## This is the actual sqlite3 commands that is going to be executed assuming the element has a value.
-       "$first_sql_commands" "${sql_commands0[@]}" "${sql_commands1[@]}" "${sql_commands2[@]}" "${sql_commands3[@]}" "${sql_commands4[@]}"
-       "${sql_commands5[@]}" "${sql_commands6[@]}" "${sql_commands7[@]}" "${sql_commands8[@]}" "${sql_commands9[@]}" "${sql_commands10[@]}"
-       "${sql_commands11[@]}" "${sql_commands12[@]}" "${sql_commands13[@]}" "${sql_commands14[@]}" "${sql_commands15[@]}"
+     sql_commands=(
+       "$first_sql_commands" "${sql_commands0[@]}" "${sql_commands1[@]}" "${sql_commands2[@]}"
+       "${sql_commands3[@]}" "${sql_commands4[@]}" "${sql_commands5[@]}" "${sql_commands6[@]}"
+       "${sql_commands7[@]}" "${sql_commands8[@]}" "${sql_commands9[@]}" "${sql_commands10[@]}"
+       "${sql_commands11[@]}" "${sql_commands12[@]}" "${sql_commands13[@]}" "$sql_commands14"
+       "${sql_commands15[@]}"
      )
 
-     ((modeline)) && first_sql_commands=" $first_sql_commands"
+     if ((modeline)); then
+       first_sql_commands=" ${first_sql_commands/".mode line"/'".mode line" "'}"
+     else
+       first_sql_commands=" \"$first_sql_commands"
+     fi
 
-     sqlcommands=( ## For human readable Format Only when the -v|--verbose is specified.
-       "$first_sql_commands" "${sql_commands0[@]}" "${sql_commands1[@]}" "${sql_commands2[@]}" "${sql_commands3[@]}" "${sql_commands4[@]}"
-       "${sql_commands5[@]}" "${sql_commands6[@]}" "${sql_commands7[@]}" "${sql_commands8[@]}" "${sql_commands9[@]}" "${sql_commands10[@]}"
-       "${hrt[@]}" "${sql_commands12[@]}" "${sql_commands13[*]} $sql_commands14" "${sql_commands15[@]}"
+     sqlcommands=(
+       "$first_sql_commands" "${sql_commands0[@]}" "${sql_commands1[@]}" "${sql_commands2[@]}"
+       "${sql_commands3[@]}" "${sql_commands4[@]}" "${sql_commands5[@]}" "${sql_commands6[@]}"
+       "${sql_commands7[@]}" "${sql_commands8[@]}" "${sql_commands9[@]}" "${sql_commands10[@]}"
+       "${sql_commands11[@]}" "${sql_commands12[@]}" "${sql_commands13[*]}$sql_commands14"
+       "${sql_commands15[@]/%/\"}"
      )
 
-
-     if ((verbose)); then  ## This is not the actual commands this is for human readable format Only, since the epoch is converted to "%F %T"
+     if ((verbose)); then  ## You can literally copypaste/save this verbose output in a file and run/execute/source the file.
        {
          builtin printf '%s %s' "sqlite3" "$__sdb_file"
          builtin printf '%s\n' "${sqlcommands[@]}"
          builtin printf '\n'
-       } >> "$temporary_dir/$temporary_file"
+       } >> "$temporary_dir/$temporary_file" || builtin return
      fi
 
      if ((!modeline)); then
        {
          builtin printf '%s\n%s\n%s\n' "$def0$user0$stat0$tty0$dir0$comm0" "$def1$user1$stat1$tty1$dir1$comm1" "$def2$user2$stat2$tty2$dir2$comm2"
-       } >> "$temporary_dir/$temporary_file"
+       } >> "$temporary_dir/$temporary_file" || builtin return
      fi
 
      builtin trap 'builtin command -p rm -rf -- "$temporary_dir"' return
