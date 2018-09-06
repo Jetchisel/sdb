@@ -2,9 +2,9 @@
 #: Title           : sdb                                                                       #
 #: Sypnosis        : sdb [OPTIONS]... [QUERY]...                                               #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Sun 02 Sep 2018 10:58:19 AM +08  /  Sun Sep  2 02:58:19 UTC 2018          #
+#: Last Edit       : Thu 06 Sep 2018 22:28:25 PM +08  /  Thu Sep  6 14:28:25 UTC 2018          #
 #: License         : MIT                                                                       #
-#: Version         : 3.4.3                                                                     #
+#: Version         : 3.4.4                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
 #: Description     : Log bash_history in a database (A fork of dbhist.sh by Dennis Gladkikh)   #
 #: Options         : [abcdehlmnoprsuvwAEMST?]                                                  #
@@ -154,11 +154,12 @@ OPTIONS:
   lines, unless the -m option is specified.
 
 DATE/TIME
-  The date/time format  is in Unix epoch time. GNU date has some  option to convert that into human readable format.
-  It also has an option  which allows you to say things like  today, now, yesterday, -1 month, last year  and so on.
+  The date/time format is in Unix epoch time. GNU date(1) has some option to convert that into human readable format
+  It also has an option  which allows you to say  things like  today, now, yesterday, -1 month, last year  and so on
   The -[tT] or --time-search-[epoch] make use of those words. The format is "startdate,end date" [lower|upper] bound
-  It should be separated by a comma. Start date should always  come first followed by the end  date. Both arguments
-  needs to be quoted together, otherwise the shell will see it as two arguments.
+  It should be  separated by a comma or just "start_date". Start date should  always  come first followed by the end
+  date. Both arguments needs  to be quoted together, otherwise the shell  will see it as two arguments. The end date
+  can be omitted and will default to `now`, the value of `date -d'now' '+%F %T'`
 
 EXAMPLES
   search between yesterday and now.
@@ -193,16 +194,21 @@ QUERY
   Nine hundred ninety-nine thousand.
   Nine hundred ninety-nine.
 
+VERBOSE OPTION
+  The -v|--verbose option shows which commands/option has been given to sqlite.
+  The output can pe pasted in the terminal or save in file and can be executed
+  or sourced.
+
 WILD CARD PATTERNS
-  When searching for the commands one may consider using the wild cards.
-  Use the -v|--verbose option to see which pattern it matches.
-  The % in sqlite is like glob * in the shell
+  When searching  for the commands/directories one may consider using the wild cards.
+  The % in sqlite is like glob * in the shell which matches everything.
   The _ in sqlite is like ? in the shell which matches any single character.
 
 USING THE OPTIONS
   Long options that takes an argument also supports the following syntax:
 
   --option=argument
+  --option argument
 
   Short options that does not take an argument can be joined as one option:
 
@@ -238,9 +244,9 @@ THE FULL ORDER OF COLUMNS
    3rd  column: Specified by -[hu], shows the user & host.
    4rth column: Date and time of the executed commands.
    5th  column: Specified by the -l option shows the exit status.
-   6th  column: Shows which "tty" the commands has be executed .
+   6th  column: Shows which "tty" the commands has been executed .
    7th  column: Specified by the -d option shows the pwd.
-   last column: Commands, separated by a > from the path column.
+   last column: Commands, separated by [>|▶] from the directory column.
 
 NOTE
    As far as the shell is concern When it comes to the exit status of the given
@@ -273,17 +279,13 @@ if "${SDB_HISTORY:-true}"; then
     builtin return 127
   fi
   __sdb_salt=$(builtin command -p dd if=/dev/urandom bs=32 count=1 2>/dev/null | builtin command -p base64)
-
   __sdb_initialized=0
-
   __sdb_pwd=$(builtin pwd)
   __sdb_pwd=${__sdb_pwd//$'\n'/\\n}
   __sdb_oldpwd+=("$__sdb_pwd")
-
   __sdb_empty_data_base=0
   __sdb_does_not_exists=0
-
-  __sdb_file=${SDB_DATABASE:-$HOME/.bash_history.sqlite}
+  __sdb_file=${SDB_DATABASE:-/home/jetchisel/Projects/shared_history_database/bash_history.sqlite}
 
   if ! builtin type -P sqlite3 >/dev/null; then
     builtin printf '%s: %s\n' "$__sdb_name_" 'sqlite3 is either not installed or it is not in your PATH' >&2
@@ -332,7 +334,7 @@ if "${SDB_HISTORY:-true}"; then
   __sdb_user_host=${__sdb_logname_:-"$LOGNAME"}@${__sdb_hostname_:-"$HOST"}
 
 # ******************************************************************************************** #
-#             Save the previous/recent cwd in the directories table in a variable.             #
+#             Save the previous/recent cwd in the directories table in a function.             #
 # ******************************************************************************************** #
 
   __sdb_recent_pwd () {
@@ -462,7 +464,7 @@ if "${SDB_HISTORY:-true}"; then
       :
     done < <(builtin history 2)
 
-    if [[ ! -s /tmp/${__sdb_logname_}_sdb_last_status ]]; then
+    if [[ ! -s $TMPDIR/${__sdb_logname_}_sdb_last_status ]]; then
       if [[ $history2_output =~ $regexp ]]; then
         uncaptured_num=${BASH_REMATCH[1]}
         uncaptured_epoch=${BASH_REMATCH[2]}
@@ -506,7 +508,7 @@ if "${SDB_HISTORY:-true}"; then
         fi
       fi
     else
-      builtin command -p rm -rf "/tmp/${__sdb_logname_}_sdb_last_status" || builtin return
+      builtin command -p rm -rf "$TMPDIR/${__sdb_logname_}_sdb_last_status" || builtin return
     fi
 
 # ******************************************************************************************** #
@@ -528,7 +530,7 @@ if "${SDB_HISTORY:-true}"; then
     fi
 
     if [[ $command =~ $uncaptured_reg ]]; then
-      builtin echo "$Last_Command" > "/tmp/${__sdb_logname_}_sdb_last_status" || builtin return
+      builtin echo "$Last_Command" > "$TMPDIR/${__sdb_logname_}_sdb_last_status" || builtin return
     fi
 
     __sdb__executioner__() {
@@ -549,8 +551,10 @@ if "${SDB_HISTORY:-true}"; then
 
     while builtin read -r command__ <&8; do
       __sdb_sqlite <<-END
-	INSERT INTO history( hist_id, epoch, cmd, ppid, exit_status, tty, user_hosts, pwd, salt )
-	VALUES(
+	INSERT INTO history (
+	hist_id, epoch, cmd, ppid, exit_status, tty, user_hosts, pwd, salt
+	)
+	VALUES (
 	"${num:-$(( $(__sdb_sqlite 'SELECT hist_id FROM history ORDER BY id DESC LIMIT 1;') + 1 )) }",
 	"${epoch:-"$(builtin command -p date -d 'now' '+%s')"}",
 	"${command__//\"/\"\"}",
@@ -644,10 +648,9 @@ if "${SDB_HISTORY:-true}"; then
      builtin local def2='+------------+--------+---------------------+'
      TMPDIR=${TMPDIR:-/tmp}
      temporary_file=__${__sdb_name_}_tempfile_$RANDOM
-     temporary_dir=$(builtin command -p mktemp -d "$TMPDIR/XXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
      builtin declare -a hrt
      builtin declare -a sdb_opt
-     builtin declare -a sqlcommands
+     builtin declare -a verbose_sql_commands
      builtin declare -a sql_commands
      builtin declare -a sql_commands{0..14}
 
@@ -783,8 +786,20 @@ if "${SDB_HISTORY:-true}"; then
            fi
            time_search=1
            time_search0=$1
-           time_search1=$(builtin command -p date -d"${time_search0%,*}" "+%s") || builtin return
-           time_search2=$(builtin command -p date -d"${time_search0#*,}" "+%s") || builtin return
+           if [[ $time_search0 != *','* ]]; then
+             time_search1=$time_search0
+           elif [[ $time_search0 = *','* ]]; then
+             time_search1=${time_search0%,*}
+             time_search2=${time_search0#*,}
+           fi
+           builtin command -p date -d"${time_search0%,*}" "+%s" >/dev/null 2>&1 || {
+             __sdb_warn_ "Syntax error" "invalid date -- '$G$time_search0$R'"
+             builtin return 1
+           }
+           builtin command -p date -d"${time_search0#*,}" "+%s" >/dev/null 2>&1 || {
+             __sdb_warn_ "Syntax error" "invalid date -- '$G$time_search0$R'"
+             builtin return 1
+           }
            ;;
          --user|-u)
            builtin shift
@@ -913,6 +928,17 @@ if "${SDB_HISTORY:-true}"; then
      fi
 
 # ******************************************************************************************** #
+#       How do I create a temporary file in a secure manner?, see wiki.wooledge/FAQ/062        #
+# ******************************************************************************************** #
+
+     builtin trap 'builtin command -p rm -rf -- "$temporary_dir"' return
+     builtin trap 'builtin return 1' 1 2 3 15
+     temporary_dir=$(builtin command -p mktemp -d "$TMPDIR/sdb.XXXXXXXXXXXXXXXXXXXXXXXXXXXXX") || {
+       builtin printf 'ERROR creating a temporary files\n' >&2
+       builtin return 1
+     }
+
+# ******************************************************************************************** #
 # Run the command with the corresponding ID, with the all time favorite builtin command: EVAL  #
 # ******************************************************************************************** #
 
@@ -961,10 +987,6 @@ if "${SDB_HISTORY:-true}"; then
        done
 
        if ((sdb_edit)); then
-
-         builtin trap 'builtin command -p rm -rf -- "$temporary_dir"' return
-         builtin trap 'builtin exit 1' 1 2 3 15
-
          builtin printf '%s\n' "${execute_var0%"|"*}" > "$temporary_dir/$temporary_file" 2>&1 || builtin return
          "${EDITOR:-vim}" -- "$temporary_dir/$temporary_file" || builtin return
          while IFS= builtin read -u9 -r to_be_executed_by_eval; do
@@ -1094,8 +1116,8 @@ if "${SDB_HISTORY:-true}"; then
       if ((time_search && Hrt)); then
         sql_commands12=(
          "AND date(datetime(epoch, 'unixepoch', 'localtime'))
-          BETWEEN date('$(builtin command -p date -d"${time_search0%,*}" "+%F %T")')
-            AND   date('$(builtin command -p date -d"${time_search0#*,}" "+%F %T")')"
+          BETWEEN date('$(builtin command -p date -d"$time_search1" "+%F %T")')
+            AND   date('$(builtin command -p date -d"${time_search2:-now}" "+%F %T")')"
         )
      fi
 
@@ -1128,7 +1150,7 @@ if "${SDB_HISTORY:-true}"; then
        first_sql_commands=" \"$first_sql_commands"
      fi
 
-     sqlcommands=(
+     verbose_sql_commands=(
        "$first_sql_commands" "${sql_commands0[@]}" "${sql_commands1[@]}" "${sql_commands2[@]}"
        "${sql_commands3[@]}" "${sql_commands4[@]}" "${sql_commands5[@]}" "${sql_commands6[@]}"
        "${sql_commands7[@]}" "${sql_commands8[@]}" "${sql_commands9[@]}" "${sql_commands10[@]}"
@@ -1139,7 +1161,7 @@ if "${SDB_HISTORY:-true}"; then
      if ((verbose)); then  ## You can literally copypaste/save this verbose output in a file and run/execute/source the file.
        {
          builtin printf '%s %s' "sqlite3" "$__sdb_file"
-         builtin printf '%s\n' "${sqlcommands[@]}"
+         builtin printf '%s\n' "${verbose_sql_commands[@]}"
          builtin printf '\n'
        } >> "$temporary_dir/$temporary_file" || builtin return
      fi
@@ -1149,9 +1171,6 @@ if "${SDB_HISTORY:-true}"; then
          builtin printf '%s\n%s\n%s\n' "$def0$user0$stat0$tty0$dir0$comm0" "$def1$user1$stat1$tty1$dir1$comm1" "$def2$user2$stat2$tty2$dir2$comm2"
        } >> "$temporary_dir/$temporary_file" || builtin return
      fi
-
-     builtin trap 'builtin command -p rm -rf -- "$temporary_dir"' return
-     builtin trap 'builtin exit 1' 1 2 3 15
 
      __sdb_sqlite <<< "${sql_commands[@]}" >> "$temporary_dir/$temporary_file" 2>&1 || builtin return
 

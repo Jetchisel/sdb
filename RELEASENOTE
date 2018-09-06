@@ -1,4 +1,4 @@
-Version 3.4.3 Release note of sdb.
+Version 3.4.4 Release note of sdb.
 
 ============================================================================================================================================
 
@@ -50,6 +50,7 @@ IMPROVEMENTS
 -  Add new column tty in the history table.
 -  Add a Human Readable time format when searching for time/date.
 -  Use the native sqlite command when inserting an epoch date, instead of using date(1).
+-  Accept start_date as the only argument when searching by date/time.
 
 ============================================================================================================================================
 
@@ -59,6 +60,7 @@ FIXES
 -  Fix the pattern for the dotted directories when searching for path using "realpath" for the commands.
 -  Fix the regex for the problematic commands. (exec and source)
 -  Fix the wrong directory for some corner cases where it fails.
+-  Fix the clean up of tempfiles.
 
 ============================================================================================================================================
 
