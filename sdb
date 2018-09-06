@@ -2,9 +2,9 @@
 #: Title           : sdb                                                                       #
 #: Sypnosis        : sdb [OPTIONS]... [QUERY]...                                               #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Thu 06 Sep 2018 23:23:07 PM +08  /  Thu Sep  6 15:23:07 UTC 2018          #
+#: Last Edit       : Thu 06 Sep 2018 23:40:26 PM +08  /  Thu Sep  6 15:40:26 UTC 2018          #
 #: License         : MIT                                                                       #
-#: Version         : 3.4.5                                                                     #
+#: Version         : 3.4.6                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
 #: Description     : Log bash_history in a database (A fork of dbhist.sh by Dennis Gladkikh)   #
 #: Options         : [abcdehlmnoprsuvwAEMST?]                                                  #
@@ -285,7 +285,7 @@ if "${SDB_HISTORY:-true}"; then
   __sdb_oldpwd+=("$__sdb_pwd")
   __sdb_empty_data_base=0
   __sdb_does_not_exists=0
-  __sdb_file=${SDB_DATABASE:-$HOME/bash_history.sqlite}
+  __sdb_file=${SDB_DATABASE:-"$HOME/.bash_history.sqlite"}
 
   if ! builtin type -P sqlite3 >/dev/null; then
     builtin printf '%s: %s\n' "$__sdb_name_" 'sqlite3 is either not installed or it is not in your PATH' >&2
