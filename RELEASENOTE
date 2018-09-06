@@ -1,4 +1,4 @@
-Version 3.4.6 Release note of sdb.
+Version 3.4.7 Release note of sdb.
 
 ============================================================================================================================================
 
@@ -61,6 +61,7 @@ FIXES
 -  Fix the regex for the problematic commands. (exec and source)
 -  Fix the wrong directory for some corner cases where it fails.
 -  Fix the clean up of tempfiles.
+-  Add the missing tty column during the creation of the table history.
 
 ============================================================================================================================================
 

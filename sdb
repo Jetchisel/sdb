@@ -2,9 +2,9 @@
 #: Title           : sdb                                                                       #
 #: Sypnosis        : sdb [OPTIONS]... [QUERY]...                                               #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Thu 06 Sep 2018 23:40:26 PM +08  /  Thu Sep  6 15:40:26 UTC 2018          #
+#: Last Edit       : Fri 07 Sep 2018 01:21:55 AM +08  /  Thu Sep  6 17:21:55 UTC 2018          #
 #: License         : MIT                                                                       #
-#: Version         : 3.4.6                                                                     #
+#: Version         : 3.4.7                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
 #: Description     : Log bash_history in a database (A fork of dbhist.sh by Dennis Gladkikh)   #
 #: Options         : [abcdehlmnoprsuvwAEMST?]                                                  #
@@ -303,6 +303,7 @@ if "${SDB_HISTORY:-true}"; then
     epoch INTEGER,
     ppid INTEGER,
     exit_status INTEGER,
+    tty TEXT,
     user_hosts TEXT,
     pwd TEXT,
     salt TEXT
@@ -492,8 +493,10 @@ if "${SDB_HISTORY:-true}"; then
               fi
               )
      __sdb_sqlite <<-END
-	INSERT INTO history( hist_id, epoch, cmd, ppid, exit_status, tty, user_hosts, pwd, salt )
-	VALUES(
+	INSERT INTO history (
+	hist_id, epoch, cmd, ppid, exit_status, tty, user_hosts, pwd, salt
+	)
+	VALUES (
 	"$uncaptured_num",
 	"$uncaptured_epoch",
 	"${uncaptured_command//\"/\"\"}",
@@ -573,615 +576,613 @@ if "${SDB_HISTORY:-true}"; then
   }
 
   sdb() {
+    builtin local all=0
+    builtin local end=0
+    builtin local pwd=0
+    builtin local Hrt=0
+    builtin local zero=0
+    builtin local self=0
+    builtin local path=0
+    builtin local rpath=0
+    builtin local begin=0
+    builtin local max=100
+    builtin local ascend=0
+    builtin local Others=0
+    builtin local execute=0
+    builtin local verbose=0
+    builtin local offpager=0
+    builtin local OnlyUser=0
+    builtin local OnlyHost=0
+    builtin local modeline=0
+    builtin local exit_stat=0
+    builtin local user_host=0
+    builtin local whole_line=0
+    builtin local sdb_edit=0
+    builtin local time_search=0
+    builtin local numeric_status=0
+    builtin local G=
+    builtin local R=
+    builtin local dir0=
+    builtin local dir1=
+    builtin local dir2=
+    builtin local user0=
+    builtin local user1=
+    builtin local user2=
+    builtin local stat0=
+    builtin local stat1=
+    builtin local stat2=
+    builtin local pwd_q=
+    builtin local menus=
+    builtin local answer=
+    builtin local location=
+    builtin local UserOnly=
+    builtin local HostOnly=
+    builtin local optstring=
+    builtin local separator=
+    builtin local User_Host=
+    builtin local query_end=
+    builtin local pathquery=
+    builtin local rpathquery=
+    builtin local ExitStatus=
+    builtin local query_begin=
+    builtin local query_whole=
+    builtin local execute_var=
+    builtin local time_search0=
+    builtin local time_search1=
+    builtin local time_search2=
+    builtin local execute_var0=
+    builtin local regexpath=[./]
+    builtin local temporary_dir=
+    builtin local temporary_file=
+    builtin local both_user_host=
+    builtin local numeric_status_value=
+    builtin local to_be_executed_by_eval=
+    builtin local sorting=DESC
+    builtin local name=$__sdb_name_
+    builtin local tty0='---------+'
+    builtin local tty1='   TTY   |'
+    builtin local tty2='---------+'
+    builtin local comm0='----------------+'
+    builtin local comm1='   COMMAND      |'
+    builtin local comm2='----------------+'
+    builtin local def0='+------------+--------+---------------------+'
+    builtin local def1='|     ID     | COUNT  |      DATE/TIME      |'
+    builtin local def2='+------------+--------+---------------------+'
+    TMPDIR=${TMPDIR:-/tmp}
+    temporary_file=__${__sdb_name_}_tempfile_$RANDOM
+    builtin declare -a hrt
+    builtin declare -a sdb_opt
+    builtin declare -a verbose_sql_commands
+    builtin declare -a sql_commands
+    builtin declare -a sql_commands{0..14}
 
-     builtin local all=0
-     builtin local end=0
-     builtin local pwd=0
-     builtin local Hrt=0
-     builtin local zero=0
-     builtin local self=0
-     builtin local path=0
-     builtin local rpath=0
-     builtin local begin=0
-     builtin local max=100
-     builtin local ascend=0
-     builtin local Others=0
-     builtin local execute=0
-     builtin local verbose=0
-     builtin local offpager=0
-     builtin local OnlyUser=0
-     builtin local OnlyHost=0
-     builtin local modeline=0
-     builtin local exit_stat=0
-     builtin local user_host=0
-     builtin local whole_line=0
-     builtin local sdb_edit=0
-     builtin local time_search=0
-     builtin local numeric_status=0
-     builtin local G=
-     builtin local R=
-     builtin local dir0=
-     builtin local dir1=
-     builtin local dir2=
-     builtin local user0=
-     builtin local user1=
-     builtin local user2=
-     builtin local stat0=
-     builtin local stat1=
-     builtin local stat2=
-     builtin local pwd_q=
-     builtin local menus=
-     builtin local answer=
-     builtin local location=
-     builtin local UserOnly=
-     builtin local HostOnly=
-     builtin local optstring=
-     builtin local separator=
-     builtin local User_Host=
-     builtin local query_end=
-     builtin local pathquery=
-     builtin local rpathquery=
-     builtin local ExitStatus=
-     builtin local query_begin=
-     builtin local query_whole=
-     builtin local execute_var=
-     builtin local time_search0=
-     builtin local time_search1=
-     builtin local time_search2=
-     builtin local execute_var0=
-     builtin local regexpath=[./]
-     builtin local temporary_dir=
-     builtin local temporary_file=
-     builtin local both_user_host=
-     builtin local numeric_status_value=
-     builtin local to_be_executed_by_eval=
-     builtin local sorting=DESC
-     builtin local name=$__sdb_name_
-     builtin local tty0='---------+'
-     builtin local tty1='   TTY   |'
-     builtin local tty2='---------+'
-     builtin local comm0='----------------+'
-     builtin local comm1='   COMMAND      |'
-     builtin local comm2='----------------+'
-     builtin local def0='+------------+--------+---------------------+'
-     builtin local def1='|     ID     | COUNT  |      DATE/TIME      |'
-     builtin local def2='+------------+--------+---------------------+'
-     TMPDIR=${TMPDIR:-/tmp}
-     temporary_file=__${__sdb_name_}_tempfile_$RANDOM
-     builtin declare -a hrt
-     builtin declare -a sdb_opt
-     builtin declare -a verbose_sql_commands
-     builtin declare -a sql_commands
-     builtin declare -a sql_commands{0..14}
-
-     if builtin type -P tput >/dev/null; then
-       G=$(builtin command -p tput bold)
-       R=$(builtin command -p tput sgr0)
-     fi
+    if builtin type -P tput >/dev/null; then
+      G=$(builtin command -p tput bold)
+      R=$(builtin command -p tput sgr0)
+    fi
 
 # ******************************************************************************************** #
 # Getops from scratch by D.J. Mills, https://github.com/e36freak/templates/blob/master/options #
 # ******************************************************************************************** #
 
-     optstring=acdlosvAMSb:e:h:m:n:u:w:r:t:p:E:T:
+    optstring=acdlosvAMSb:e:h:m:n:u:w:r:t:p:E:T:
 
-     builtin unset options
+    builtin unset options
 
-     while (($#)); do
-       case $1 in
-         -[!-0-9]?*)
-           for ((i=1; i<${#1}; i++)); do
-             c=${1:i:1}
-             options+=("-$c")
-             if [[ $optstring = *"$c:"* && ${1:i+1} ]]; then
-               options+=("${1:i+1}")
-               builtin break
-             fi
-           done
-           ;;
-         --?*=*) options+=("${1%%=*}" "${1#*=}");;
-         --) options+=(--endopts);;
-         *) options+=("$1");;
-       esac
-       builtin shift
-     done
+    while (($#)); do
+      case $1 in
+        -[!-0-9]?*)
+          for ((i=1; i<${#1}; i++)); do
+            c=${1:i:1}
+            options+=("-$c")
+            if [[ $optstring = *"$c:"* && ${1:i+1} ]]; then
+              options+=("${1:i+1}")
+              builtin break
+            fi
+          done
+          ;;
+        --?*=*) options+=("${1%%=*}" "${1#*=}");;
+        --) options+=(--endopts);;
+        *) options+=("$1");;
+      esac
+      builtin shift
+    done
 
-     builtin set -- "${options[@]}"
-     builtin unset options
+    builtin set -- "${options[@]}"
+    builtin unset options
 
 # ******************************************************************************************** #
 #   If first option is not empty and it does not start with a dash then exit with an error.    #
 # ******************************************************************************************** #
 
-     [[ -n $1 && $1 != -?* ]] && {
-       __sdb_warn_ "invalid option -- '$1'" "Try '$__sdb_name_ --help'"
-       builtin return 1
-     }
+    [[ -n $1 && $1 != -?* ]] && {
+      __sdb_warn_ "invalid option -- '$1'" "Try '$__sdb_name_ --help'"
+      builtin return 1
+    }
 
 # ******************************************************************************************** #
 #                          Parse the command line arguments/options.                           #
 # ******************************************************************************************** #
 
-     while [[ $1 = -?* ]]; do
-       case $1 in
-         --shell|-S)
-           __sdb_sqlite
-           builtin return
-           ;;
-         --help|-\?)
-           ____ShowHelp____
-           builtin return
-           ;;
-         --max-count|-m)
-           builtin shift
-           if [[ -z $1 ]]; then
-             __sdb_warn_ "Max count requires a value!" "Try '$__sdb_name_ --help'"
-             builtin return 1
-           elif ! [[ $1 = +([0-9]) || $1 = "+" ]]; then
-             __sdb_warn_ "max count -- '$G$1$R' should be a number or a + sign!" "Try '$__sdb_name_ --help'"
-             builtin return 1
-           fi
-           if [[ $1 = + ]]; then
-             max=999999999999999999
-           else
-             max=$1
-           fi
-           ;;
-         --ascending|-A)
-           ascend=1
-           ;;
-         --all|-a)
-           all=1
-           ;;
-         --common-info|-c)
-           pwd=1
-           user_host=1
-           exit_stat=1
-           ;;
-         --last-status|-l)
-           exit_stat=1
-           ;;
-         --mode-line|-M)
-           modeline=1
-           ;;
-         --other-users|-o)
-           Others=1
-           ;;
-         --self|-s)
-           self=1
-           ;;
-         --begin-with|-b)
-           builtin shift
-           begin=1
-           if ((whole_line)); then
-             __sdb_warn_ 'conflicting options specified!' "Try '$__sdb_name_ --help'"
-             builtin return 1
-           fi
-           if [[ -z $1 ]]; then
-             __sdb_warn_ "begin requires a value!" "Try '$__sdb_name_ --help'"
-             builtin return 1
-           fi
-           query_begin=$1
-           ;;
-         --host|-h)
-           builtin shift
-           if [[ -z $1 ]]; then
-             __sdb_warn_ "host requires a value!" "Try '$__sdb_name_ --help'"
-             builtin return 1
-           fi
-           Others=1
-           user_host=1
-           OnlyHost=1
-           HostOnly=%@${1}
-           ;;
-         --time-search|--time-search-epoch|-T|-t)
-           case $1 in
-             --time-search|-t)
-               Hrt=1;;
-           esac
-           builtin shift
-           if [[ -z $1 ]]; then
-             __sdb_warn_ "Time requires two values, separated by a comma!" "Try '$__sdb_name_ --help'"
-             builtin return 1
-           fi
-           time_search=1
-           time_search0=$1
-           if [[ $time_search0 != *','* ]]; then
-             time_search1=$time_search0
-           elif [[ $time_search0 = *','* ]]; then
-             time_search1=${time_search0%,*}
-             time_search2=${time_search0#*,}
-           fi
-           builtin command -p date -d"${time_search0%,*}" "+%s" >/dev/null 2>&1 || {
-             __sdb_warn_ "Syntax error" "invalid date -- '$G$time_search0$R'"
-             builtin return 1
-           }
-           builtin command -p date -d"${time_search0#*,}" "+%s" >/dev/null 2>&1 || {
-             __sdb_warn_ "Syntax error" "invalid date -- '$G$time_search0$R'"
-             builtin return 1
-           }
-           ;;
-         --user|-u)
-           builtin shift
-           if [[ -z $1 ]]; then
-             __sdb_warn_ "user requires a value!" "Try '$__sdb_name_ --help'"
-             builtin return 1
-           fi
-           Others=1
-           user_host=1
-           OnlyUser=1
-           UserOnly=${1}@%
-           ;;
-         --end-with|-e)
-           builtin shift
-           end=1
-           if ((whole_line)); then
-             __sdb_warn_ "conflicting options specified!" "Try '$__sdb_name_ --help'"
-             builtin return 1
-           fi
-           if [[ -z $1 ]]; then
-             __sdb_warn_ "end requires a value!" "Try '$__sdb_name_ --help'"
-             builtin return 1
-           fi
-           query_end=$1
-           ;;
-         --recurse-path|-r)
-           builtin shift
-           if [[ -z $1 ]]; then
-             __sdb_warn_ "path requires a value!" "Try '$__sdb_name_ --help'"
-             builtin return 1
-           elif [[ $1 =~ $regexpath ]]; then
-             if builtin type -P realpath >/dev/null; then
-               rpathquery=$(builtin command -p realpath -- "$1")
-             else
-               __sdb_warn_ "Could not resolve path $G$1$R" "realpath is either not installed or it is not in your PATH"
-               builtin return 1
-             fi
-           else
-             rpathquery=$1
-           fi
-           rpath=1
-           pwd=1
-           ;;
-         --path|-p)
-           builtin shift
-           if [[ -z $1 ]]; then
-             __sdb_warn_ "path requires a value!" "Try '$__sdb_name_ --help'"
-             builtin return 1
-           elif [[ $1 =~ $regexpath ]]; then
-             if builtin type -P realpath >/dev/null; then
-               pathquery=$(builtin command -p realpath -- "$1")
-             else
-               __sdb_warn_ "Could not resolve path $G$1$R" "realpath is either not installed or it is not in your PATH"
-               builtin return 1
-             fi
-           else
-             pathquery=$1
-           fi
-           pwd=1
-           path=1
-           ;;
-         --verbose|-v)
-           verbose=1
-           ;;
-         --with-word|-w)
-           builtin shift
-           whole_line=1
-           if ((begin || end)); then
-             __sdb_warn_ "conflicting options specified!" "Try '$__sdb_name_ --help'"
-             builtin return 1
-           fi
-           if [[ -z $1 ]]; then
-             __sdb_warn_ "word requires a value!" "Try '$__sdb_name_ --help'"
-             builtin return 1
-           fi
-           query_whole=$1
-           ;;
-         --execute-id|-E)
-           builtin shift
-           execute=1
-           if [[ -z $1 ]]; then
-             __sdb_warn_ "id requires a value!" "Try '$__sdb_name_ --help'"
-             builtin return 1
-           elif [[ $1 != +([0-9]) ]]; then
-             __sdb_warn_ "id -- '$G$1$R' should be a number!" "Try '$__sdb_name_ --help'"
-             builtin return 1
-           fi
-           execute_var=$1
-           ;;
-         --directory|-d)
-           pwd=1
-           ;;
-         --numeric-status|-n)
-           builtin shift
-           if [[ -z $1 ]]; then
-             __sdb_warn_ "status requires a value!" "Try '$__sdb_name_ --help'"
-             builtin return 1
-           elif ! [[  $1 = +([0-9]) || $1 = + ]]; then
-             __sdb_warn_ "status requires an integer or a + sign!" "Try '$__sdb_name_ --help'"
-             builtin return 1
-           fi
-           exit_stat=1
-           numeric_status=1
-           numeric_status_value=$1
-           ;;
-         --endopts)
-           builtin shift
-           builtin break
-           ;;
-         *)
-            __sdb_warn_ "invalid option -- '$G$1$R'" "Try '$__sdb_name_ --help'"
+    while [[ $1 = -?* ]]; do
+      case $1 in
+        --shell|-S)
+          __sdb_sqlite
+          builtin return
+          ;;
+        --help|-\?)
+          ____ShowHelp____
+          builtin return
+          ;;
+        --max-count|-m)
+          builtin shift
+          if [[ -z $1 ]]; then
+            __sdb_warn_ "Max count requires a value!" "Try '$__sdb_name_ --help'"
             builtin return 1
-           ;;
-       esac
-       builtin shift
-     done
+          elif ! [[ $1 = +([0-9]) || $1 = "+" ]]; then
+            __sdb_warn_ "max count -- '$G$1$R' should be a number or a + sign!" "Try '$__sdb_name_ --help'"
+            builtin return 1
+          fi
+          if [[ $1 = + ]]; then
+            max=999999999999999999
+          else
+            max=$1
+          fi
+          ;;
+        --ascending|-A)
+          ascend=1
+          ;;
+        --all|-a)
+          all=1
+          ;;
+        --common-info|-c)
+          pwd=1
+          user_host=1
+          exit_stat=1
+          ;;
+        --last-status|-l)
+          exit_stat=1
+          ;;
+        --mode-line|-M)
+          modeline=1
+          ;;
+        --other-users|-o)
+          Others=1
+          ;;
+        --self|-s)
+          self=1
+          ;;
+        --begin-with|-b)
+          builtin shift
+          begin=1
+          if ((whole_line)); then
+            __sdb_warn_ 'conflicting options specified!' "Try '$__sdb_name_ --help'"
+            builtin return 1
+          fi
+          if [[ -z $1 ]]; then
+            __sdb_warn_ "begin requires a value!" "Try '$__sdb_name_ --help'"
+            builtin return 1
+          fi
+          query_begin=$1
+          ;;
+        --host|-h)
+          builtin shift
+          if [[ -z $1 ]]; then
+            __sdb_warn_ "host requires a value!" "Try '$__sdb_name_ --help'"
+            builtin return 1
+          fi
+          Others=1
+          user_host=1
+          OnlyHost=1
+          HostOnly=%@${1}
+          ;;
+        --time-search|--time-search-epoch|-T|-t)
+          case $1 in
+            --time-search|-t)
+              Hrt=1;;
+          esac
+          builtin shift
+          if [[ -z $1 ]]; then
+            __sdb_warn_ "Time requires two values, separated by a comma!" "Try '$__sdb_name_ --help'"
+            builtin return 1
+          fi
+          time_search=1
+          time_search0=$1
+          if [[ $time_search0 != *','* ]]; then
+            time_search1=$time_search0
+          elif [[ $time_search0 = *','* ]]; then
+            time_search1=${time_search0%,*}
+            time_search2=${time_search0#*,}
+          fi
+          builtin command -p date -d"${time_search0%,*}" "+%s" >/dev/null 2>&1 || {
+            __sdb_warn_ "Syntax error" "invalid date -- '$G$time_search0$R'"
+            builtin return 1
+          }
+          builtin command -p date -d"${time_search0#*,}" "+%s" >/dev/null 2>&1 || {
+            __sdb_warn_ "Syntax error" "invalid date -- '$G$time_search0$R'"
+            builtin return 1
+          }
+          ;;
+        --user|-u)
+          builtin shift
+          if [[ -z $1 ]]; then
+            __sdb_warn_ "user requires a value!" "Try '$__sdb_name_ --help'"
+            builtin return 1
+          fi
+          Others=1
+          user_host=1
+          OnlyUser=1
+          UserOnly=${1}@%
+          ;;
+        --end-with|-e)
+          builtin shift
+          end=1
+          if ((whole_line)); then
+            __sdb_warn_ "conflicting options specified!" "Try '$__sdb_name_ --help'"
+            builtin return 1
+          fi
+          if [[ -z $1 ]]; then
+            __sdb_warn_ "end requires a value!" "Try '$__sdb_name_ --help'"
+            builtin return 1
+          fi
+          query_end=$1
+          ;;
+        --recurse-path|-r)
+          builtin shift
+          if [[ -z $1 ]]; then
+            __sdb_warn_ "path requires a value!" "Try '$__sdb_name_ --help'"
+            builtin return 1
+          elif [[ $1 =~ $regexpath ]]; then
+            if builtin type -P realpath >/dev/null; then
+              rpathquery=$(builtin command -p realpath -- "$1")
+            else
+              __sdb_warn_ "Could not resolve path $G$1$R" "realpath is either not installed or it is not in your PATH"
+              builtin return 1
+            fi
+          else
+            rpathquery=$1
+          fi
+          rpath=1
+          pwd=1
+          ;;
+        --path|-p)
+          builtin shift
+          if [[ -z $1 ]]; then
+            __sdb_warn_ "path requires a value!" "Try '$__sdb_name_ --help'"
+            builtin return 1
+          elif [[ $1 =~ $regexpath ]]; then
+            if builtin type -P realpath >/dev/null; then
+              pathquery=$(builtin command -p realpath -- "$1")
+            else
+              __sdb_warn_ "Could not resolve path $G$1$R" "realpath is either not installed or it is not in your PATH"
+              builtin return 1
+            fi
+          else
+            pathquery=$1
+          fi
+          pwd=1
+          path=1
+          ;;
+        --verbose|-v)
+          verbose=1
+          ;;
+        --with-word|-w)
+          builtin shift
+          whole_line=1
+          if ((begin || end)); then
+            __sdb_warn_ "conflicting options specified!" "Try '$__sdb_name_ --help'"
+            builtin return 1
+          fi
+          if [[ -z $1 ]]; then
+            __sdb_warn_ "word requires a value!" "Try '$__sdb_name_ --help'"
+            builtin return 1
+          fi
+          query_whole=$1
+          ;;
+        --execute-id|-E)
+          builtin shift
+          execute=1
+          if [[ -z $1 ]]; then
+            __sdb_warn_ "id requires a value!" "Try '$__sdb_name_ --help'"
+            builtin return 1
+          elif [[ $1 != +([0-9]) ]]; then
+            __sdb_warn_ "id -- '$G$1$R' should be a number!" "Try '$__sdb_name_ --help'"
+            builtin return 1
+          fi
+          execute_var=$1
+          ;;
+        --directory|-d)
+          pwd=1
+          ;;
+        --numeric-status|-n)
+          builtin shift
+          if [[ -z $1 ]]; then
+            __sdb_warn_ "status requires a value!" "Try '$__sdb_name_ --help'"
+            builtin return 1
+          elif ! [[  $1 = +([0-9]) || $1 = + ]]; then
+            __sdb_warn_ "status requires an integer or a + sign!" "Try '$__sdb_name_ --help'"
+            builtin return 1
+          fi
+          exit_stat=1
+          numeric_status=1
+          numeric_status_value=$1
+          ;;
+        --endopts)
+          builtin shift
+          builtin break
+          ;;
+        *)
+           __sdb_warn_ "invalid option -- '$G$1$R'" "Try '$__sdb_name_ --help'"
+           builtin return 1
+          ;;
+      esac
+      builtin shift
+    done
 
 # ******************************************************************************************** #
 #            The separator character to print, depending on the value of $DISPLAY.             #
 # ******************************************************************************************** #
 
-     if [[ -n $DISPLAY ]]; then
-       separator=' ▶  '
-     else
-       separator=' >  '
-     fi
+    if [[ -n $DISPLAY ]]; then
+      separator=' ▶  '
+    else
+      separator=' >  '
+    fi
 
 # ******************************************************************************************** #
 #       How do I create a temporary file in a secure manner?, see wiki.wooledge/FAQ/062        #
 # ******************************************************************************************** #
 
-     builtin trap 'builtin command -p rm -rf -- "$temporary_dir"' return
-     builtin trap 'builtin return 1' 1 2 3 15
-     temporary_dir=$(builtin command -p mktemp -d "$TMPDIR/sdb.XXXXXXXXXXXXXXXXXXXXXXXXXXXXX") || {
-       builtin printf 'ERROR creating a temporary files\n' >&2
-       builtin return 1
-     }
+    builtin trap 'builtin command -p rm -rf -- "$temporary_dir"' return
+    builtin trap 'builtin return 1' 1 2 3 15
+    temporary_dir=$(builtin command -p mktemp -d "$TMPDIR/sdb.XXXXXXXXXXXXXXXXXXXXXXXXXXXXX") || {
+      builtin printf 'ERROR creating a temporary files\n' >&2
+      builtin return 1
+    }
 
 # ******************************************************************************************** #
 # Run the command with the corresponding ID, with the all time favorite builtin command: EVAL  #
 # ******************************************************************************************** #
 
-     if ((execute)); then
-       execute_var0=$(__sdb_sqlite "select cmd,exit_status from history where id in ( $execute_var );")
-       if [[ -z $execute_var0 ]]; then
-         __sdb_warn_ "id -- \`$G$execute_var$R' is either out of range, or it has no command." "Try another number instead!" >&2
-         builtin return 1
-       fi
+    if ((execute)); then
+      execute_var0=$(__sdb_sqlite "select cmd,exit_status from history where id in ( $execute_var );")
+      if [[ -z $execute_var0 ]]; then
+        __sdb_warn_ "id -- \`$G$execute_var$R' is either out of range, or it has no command." "Try another number instead!" >&2
+        builtin return 1
+      fi
 
-       sdb_opt=(
-         "[Execute the command]${separator// } \`$G${execute_var0%"|"*}$R'" "[Previous exit_status]${separator// } \`$G${execute_var0##*"|"}$R'"
-         "[Inside the current directory]${separator// } \`$G$(builtin pwd)$R'" "${G}1${R}) Yes, execute now." "${G}2${R}) No, abort command."
-         "${G}3${R}) No, print ALL info to stdout only." "${G}4${R}) No, edit command first with the EDITOR." "[${G}1-4${R}]$G${separator// }$R "
-       )
+      sdb_opt=(
+        "[Execute the command]${separator// } \`$G${execute_var0%"|"*}$R'" "[Previous exit_status]${separator// } \`$G${execute_var0##*"|"}$R'"
+        "[Inside the current directory]${separator// } \`$G$(builtin pwd)$R'" "${G}1${R}) Yes, execute now." "${G}2${R}) No, abort command."
+        "${G}3${R}) No, print ALL info to stdout only." "${G}4${R}) No, edit command first with the EDITOR." "[${G}1-4${R}]$G${separator// }$R "
+      )
 
-        while builtin :; do
-          builtin printf -v menus '\n%s\n%s\n%s\n\n%s\n%s\n%s\n%s\n\n%s%s' "${sdb_opt[@]}"
-          builtin read -rp "$menus" -n 1 answer
-           case $answer in
-             1)
-               builtin echo
-               { [[ -d "${execute_var0%"|"*}" ]] && builtin shopt -q autocd ; } || builtin printf '%s\n' "${execute_var0%"|"*}"
-               builtin history -s "${execute_var0%"|"*}"
-               builtin eval "${execute_var0%"|"*}" || builtin return
-               builtin return
-               ;;
-             2) builtin return
-               ;;
-             3)
-               builtin echo
-               __sdb_sqlite ".mode line" "select * from history where id = $execute_var;"
-               builtin return
-               ;;
-             4)
-               builtin echo
-               sdb_edit=1
-               builtin break
-               ;;
-             *)
-               builtin printf '\n\n'
-               __sdb_warn_ "invalid option -- '$G$answer$R'" "Try '[${G}1 2 3 4${R}]'"
-               builtin return 1
-               ;;
-           esac
-       done
+       while builtin :; do
+         builtin printf -v menus '\n%s\n%s\n%s\n\n%s\n%s\n%s\n%s\n\n%s%s' "${sdb_opt[@]}"
+         builtin read -rp "$menus" -n 1 answer
+          case $answer in
+            1)
+              builtin echo
+              { [[ -d "${execute_var0%"|"*}" ]] && builtin shopt -q autocd ; } || builtin printf '%s\n' "${execute_var0%"|"*}"
+              builtin history -s "${execute_var0%"|"*}"
+              builtin eval "${execute_var0%"|"*}" || builtin return
+              builtin return
+              ;;
+            2) builtin return
+              ;;
+            3)
+              builtin echo
+              __sdb_sqlite ".mode line" "select * from history where id = $execute_var;"
+              builtin return
+              ;;
+            4)
+              builtin echo
+              sdb_edit=1
+              builtin break
+              ;;
+            *)
+              builtin printf '\n\n'
+              __sdb_warn_ "invalid option -- '$G$answer$R'" "Try '[${G}1 2 3 4${R}]'"
+              builtin return 1
+              ;;
+          esac
+      done
 
-       if ((sdb_edit)); then
-         builtin printf '%s\n' "${execute_var0%"|"*}" > "$temporary_dir/$temporary_file" 2>&1 || builtin return
-         "${EDITOR:-vim}" -- "$temporary_dir/$temporary_file" || builtin return
-         while IFS= builtin read -u9 -r to_be_executed_by_eval; do
-           builtin history -s "$to_be_executed_by_eval"
-           { [[ -d "$to_be_executed_by_eval" ]] && builtin shopt -q autocd ; } || builtin printf '%s\n' "$to_be_executed_by_eval"
-           builtin eval "$to_be_executed_by_eval" || builtin return
-         done 9< "$temporary_dir/$temporary_file" || builtin return
-         builtin return
-       fi
-     fi
+      if ((sdb_edit)); then
+        builtin printf '%s\n' "${execute_var0%"|"*}" > "$temporary_dir/$temporary_file" 2>&1 || builtin return
+        "${EDITOR:-vim}" -- "$temporary_dir/$temporary_file" || builtin return
+        while IFS= builtin read -u9 -r to_be_executed_by_eval; do
+          builtin history -s "$to_be_executed_by_eval"
+          { [[ -d "$to_be_executed_by_eval" ]] && builtin shopt -q autocd ; } || builtin printf '%s\n' "$to_be_executed_by_eval"
+          builtin eval "$to_be_executed_by_eval" || builtin return
+        done 9< "$temporary_dir/$temporary_file" || builtin return
+        builtin return
+      fi
+    fi
 
 # ******************************************************************************************** #
 #      First sqlite3 command, just to print out a formatted output separated by a pipe.        #
 # ******************************************************************************************** #
 
-     if ((exit_stat)); then
-       ExitStatus="substr ('      '||max(exit_status),-6) || ' | ' ||"
-       stat0='--------+'
-       stat1=' STATUS |'
-       stat2='--------+'
-     fi
+    if ((exit_stat)); then
+      ExitStatus="substr ('      '||max(exit_status),-6) || ' | ' ||"
+      stat0='--------+'
+      stat1=' STATUS |'
+      stat2='--------+'
+    fi
 
-     if ((user_host)); then
-       User_Host="substr ('             '||max(user_hosts),-20) || ' | ' ||"
-       user0='----------------------+'
-       user1='      USER@HOST       |'
-       user2='----------------------+'
-     fi
+    if ((user_host)); then
+      User_Host="substr ('             '||max(user_hosts),-20) || ' | ' ||"
+      user0='----------------------+'
+      user1='      USER@HOST       |'
+      user2='----------------------+'
+    fi
 
-     if ((pwd)); then
-       pwd_q="pwd || '$separator' ||"
-     fi
+    if ((pwd)); then
+      pwd_q="pwd || '$separator' ||"
+    fi
 
-     if ((modeline)); then
-       first_sql_commands=".mode line
-         SELECT * FROM history WHERE 1"
-     else
-       first_sql_commands="
-        SELECT
-          substr ('           '||max(id),-12) || ' | ' ||
-          substr ('      '||count(*),-6) || ' | ' ||
-          datetime (max (epoch), 'unixepoch', 'localtime') || ' | ' ||
-          $User_Host
-          $ExitStatus
-          substr ('        '||max(tty),-7) || ' | ' ||
-          $pwd_q"
-     fi
+    if ((modeline)); then
+      first_sql_commands=".mode line
+        SELECT * FROM history WHERE 1"
+    else
+      first_sql_commands="
+       SELECT
+         substr ('           '||max(id),-12) || ' | ' ||
+         substr ('      '||count(*),-6) || ' | ' ||
+         datetime (max (epoch), 'unixepoch', 'localtime') || ' | ' ||
+         $User_Host
+         $ExitStatus
+         substr ('        '||max(tty),-7) || ' | ' ||
+         $pwd_q"
+    fi
 
 # ******************************************************************************************** #
 #     Sqlite3 commands to be executed depending on the args/options given by the user.         #
 # ******************************************************************************************** #
 
-     if ((!modeline)); then
-       sql_commands0=("cmd FROM history WHERE 1")
-     fi
+    if ((!modeline)); then
+      sql_commands0=("cmd FROM history WHERE 1")
+    fi
 
-     if ((!all)); then
-       sql_commands1=("AND (salt='$__sdb_salt' AND ppid='$PPID')")
-     fi
+    if ((!all)); then
+      sql_commands1=("AND (salt='$__sdb_salt' AND ppid='$PPID')")
+    fi
 
-     if ((!Others)); then
-       sql_commands2=("AND (user_hosts = '$__sdb_user_host')")
-     fi
+    if ((!Others)); then
+      sql_commands2=("AND (user_hosts = '$__sdb_user_host')")
+    fi
 
-     if ((!self)); then
-       sql_commands3=("AND (cmd != 'sdb' AND cmd NOT LIKE 'sdb %')")
-     fi
+    if ((!self)); then
+      sql_commands3=("AND (cmd != 'sdb' AND cmd NOT LIKE 'sdb %')")
+    fi
 
-     if ((OnlyUser)); then
-       sql_commands4=("AND (user_hosts LIKE '$UserOnly')")
-     fi
+    if ((OnlyUser)); then
+      sql_commands4=("AND (user_hosts LIKE '$UserOnly')")
+    fi
 
-     if ((OnlyHost)); then
-       sql_commands5=("AND (user_hosts LIKE '$HostOnly')")
-     fi
+    if ((OnlyHost)); then
+      sql_commands5=("AND (user_hosts LIKE '$HostOnly')")
+    fi
 
-     if ((begin)); then
-       query_begin=${query_begin//\"/\"\"}
-       query_begin=$query_begin%
-       sql_commands6=("AND (cmd LIKE '$query_begin' ESCAPE '\')")
-     fi
+    if ((begin)); then
+      query_begin=${query_begin//\"/\"\"}
+      query_begin=$query_begin%
+      sql_commands6=("AND (cmd LIKE '$query_begin' ESCAPE '\')")
+    fi
 
-     if ((end)); then
-       query_end=${query_end//\"/\"\"}
-       query_end=%$query_end
-       sql_commands7=("AND (cmd LIKE '$query_end' ESCAPE '\')")
-     fi
+    if ((end)); then
+      query_end=${query_end//\"/\"\"}
+      query_end=%$query_end
+      sql_commands7=("AND (cmd LIKE '$query_end' ESCAPE '\')")
+    fi
 
-     if ((whole_line)); then
-       query_whole=${query_whole//\"/\"\"}
-       query_whole=%$query_whole%
-       sql_commands8=("AND (cmd LIKE '$query_whole' ESCAPE '\')")
-     fi
+    if ((whole_line)); then
+      query_whole=${query_whole//\"/\"\"}
+      query_whole=%$query_whole%
+      sql_commands8=("AND (cmd LIKE '$query_whole' ESCAPE '\')")
+    fi
 
-     if ((path)); then
-       if [[ -n $rpathquery ]]; then
+    if ((path)); then
+      if [[ -n $rpathquery ]]; then
+        __sdb_warn_ "conflicting options specified!" "Try '$__sdb_name_ --help'"
+        builtin return 1
+      fi
+      pathquery=${pathquery//\"/\"\"}
+      sql_commands9=("AND (pwd = '$pathquery')")
+    fi
+
+    if ((rpath)); then
+       if [[ -n $pathquery ]]; then
          __sdb_warn_ "conflicting options specified!" "Try '$__sdb_name_ --help'"
          builtin return 1
        fi
-       pathquery=${pathquery//\"/\"\"}
-       sql_commands9=("AND (pwd = '$pathquery')")
-     fi
+       rpathquery=${rpathquery//\"/\"\"}
+      sql_commands10=("AND (pwd LIKE '$rpathquery%' ESCAPE '\')")
+    fi
 
-     if ((rpath)); then
-        if [[ -n $pathquery ]]; then
-          __sdb_warn_ "conflicting options specified!" "Try '$__sdb_name_ --help'"
-          builtin return 1
-        fi
-        rpathquery=${rpathquery//\"/\"\"}
-       sql_commands10=("AND (pwd LIKE '$rpathquery%' ESCAPE '\')")
-     fi
-
-     if ((numeric_status)); then
-       if [[ $numeric_status_value = + ]]; then
-         sql_commands11=("AND (exit_status > '0')")
-       else
-         sql_commands11=("AND (exit_status = '$numeric_status_value')")
-       fi
-     fi
-
-     if ((time_search && ! Hrt)); then
-       sql_commands12=(
-         "AND (epoch BETWEEN $(builtin command -p date -d"${time_search0%,*}" "+%s") AND $(builtin command -p date -d"${time_search0#*,}" "+%s"))"
-         )
+    if ((numeric_status)); then
+      if [[ $numeric_status_value = + ]]; then
+        sql_commands11=("AND (exit_status > '0')")
+      else
+        sql_commands11=("AND (exit_status = '$numeric_status_value')")
       fi
+    fi
 
-      if ((time_search && Hrt)); then
-        sql_commands12=(
-         "AND date(datetime(epoch, 'unixepoch', 'localtime'))
-          BETWEEN date('$(builtin command -p date -d"$time_search1" "+%F %T")')
-            AND   date('$(builtin command -p date -d"${time_search2:-now}" "+%F %T")')"
+    if ((time_search && ! Hrt)); then
+      sql_commands12=(
+        "AND (epoch BETWEEN $(builtin command -p date -d"${time_search0%,*}" "+%s") AND $(builtin command -p date -d"${time_search0#*,}" "+%s"))"
         )
      fi
 
-     sql_commands13=("GROUP BY cmd,exit_status,tty,user_hosts")
-     if ((pwd)); then
-       sql_commands14=(,pwd)
-       dir0='----------------+'
-       dir1="   DIRECTORY    |${separator// }"
-       dir2='----------------+'
-       comm1='    COMMAND    |'
-     fi
+     if ((time_search && Hrt)); then
+       sql_commands12=(
+        "AND date(datetime(epoch, 'unixepoch', 'localtime'))
+         BETWEEN date('$(builtin command -p date -d"$time_search1" "+%F %T")')
+           AND   date('$(builtin command -p date -d"${time_search2:-now}" "+%F %T")')"
+       )
+    fi
 
-     if ((ascend)); then
-       sorting=ASC
-     fi
+    sql_commands13=("GROUP BY cmd,exit_status,tty,user_hosts")
+    if ((pwd)); then
+      sql_commands14=(,pwd)
+      dir0='----------------+'
+      dir1="   DIRECTORY    |${separator// }"
+      dir2='----------------+'
+      comm1='    COMMAND    |'
+    fi
 
-     sql_commands15=("ORDER BY max(id) $sorting LIMIT $max;")
+    if ((ascend)); then
+      sorting=ASC
+    fi
 
-     sql_commands=(
-       "$first_sql_commands" "${sql_commands0[@]}" "${sql_commands1[@]}" "${sql_commands2[@]}"
-       "${sql_commands3[@]}" "${sql_commands4[@]}" "${sql_commands5[@]}" "${sql_commands6[@]}"
-       "${sql_commands7[@]}" "${sql_commands8[@]}" "${sql_commands9[@]}" "${sql_commands10[@]}"
-       "${sql_commands11[@]}" "${sql_commands12[@]}" "${sql_commands13[@]}" "$sql_commands14"
-       "${sql_commands15[@]}"
-     )
+    sql_commands15=("ORDER BY max(id) $sorting LIMIT $max;")
 
-     if ((modeline)); then
-       first_sql_commands=" ${first_sql_commands/".mode line"/'".mode line" "'}"
-     else
-       first_sql_commands=" \"$first_sql_commands"
-     fi
+    sql_commands=(
+      "$first_sql_commands" "${sql_commands0[@]}" "${sql_commands1[@]}" "${sql_commands2[@]}"
+      "${sql_commands3[@]}" "${sql_commands4[@]}" "${sql_commands5[@]}" "${sql_commands6[@]}"
+      "${sql_commands7[@]}" "${sql_commands8[@]}" "${sql_commands9[@]}" "${sql_commands10[@]}"
+      "${sql_commands11[@]}" "${sql_commands12[@]}" "${sql_commands13[@]}" "$sql_commands14"
+      "${sql_commands15[@]}"
+    )
 
-     verbose_sql_commands=(
-       "$first_sql_commands" "${sql_commands0[@]}" "${sql_commands1[@]}" "${sql_commands2[@]}"
-       "${sql_commands3[@]}" "${sql_commands4[@]}" "${sql_commands5[@]}" "${sql_commands6[@]}"
-       "${sql_commands7[@]}" "${sql_commands8[@]}" "${sql_commands9[@]}" "${sql_commands10[@]}"
-       "${sql_commands11[@]}" "${sql_commands12[@]}" "${sql_commands13[*]}$sql_commands14"
-       "${sql_commands15[@]/%/\"}"
-     )
+    if ((modeline)); then
+      first_sql_commands=" ${first_sql_commands/".mode line"/'".mode line" "'}"
+    else
+      first_sql_commands=" \"$first_sql_commands"
+    fi
 
-     if ((verbose)); then  ## You can literally copypaste/save this verbose output in a file and run/execute/source the file.
-       {
-         builtin printf '%s %s' "sqlite3" "$__sdb_file"
-         builtin printf '%s\n' "${verbose_sql_commands[@]}"
-         builtin printf '\n'
-       } >> "$temporary_dir/$temporary_file" || builtin return
-     fi
+    verbose_sql_commands=(
+      "$first_sql_commands" "${sql_commands0[@]}" "${sql_commands1[@]}" "${sql_commands2[@]}"
+      "${sql_commands3[@]}" "${sql_commands4[@]}" "${sql_commands5[@]}" "${sql_commands6[@]}"
+      "${sql_commands7[@]}" "${sql_commands8[@]}" "${sql_commands9[@]}" "${sql_commands10[@]}"
+      "${sql_commands11[@]}" "${sql_commands12[@]}" "${sql_commands13[*]}$sql_commands14"
+      "${sql_commands15[@]/%/\"}"
+    )
 
-     if ((!modeline)); then
-       {
-         builtin printf '%s\n%s\n%s\n' "$def0$user0$stat0$tty0$dir0$comm0" "$def1$user1$stat1$tty1$dir1$comm1" "$def2$user2$stat2$tty2$dir2$comm2"
-       } >> "$temporary_dir/$temporary_file" || builtin return
-     fi
+    if ((verbose)); then  ## You can literally copypaste/save this verbose output in a file and run/execute/source the file.
+      {
+        builtin printf '%s %s' "sqlite3" "$__sdb_file"
+        builtin printf '%s\n' "${verbose_sql_commands[@]}"
+        builtin printf '\n'
+      } >> "$temporary_dir/$temporary_file" || builtin return
+    fi
 
-     __sdb_sqlite <<< "${sql_commands[@]}" >> "$temporary_dir/$temporary_file" 2>&1 || builtin return
+    if ((!modeline)); then
+      {
+        builtin printf '%s\n%s\n%s\n' "$def0$user0$stat0$tty0$dir0$comm0" "$def1$user1$stat1$tty1$dir1$comm1" "$def2$user2$stat2$tty2$dir2$comm2"
+      } >> "$temporary_dir/$temporary_file" || builtin return
+    fi
 
-     if [[ $PAGER  = less ]]; then
-       builtin command -p "$PAGER" -Ss -- "$temporary_dir/$temporary_file" || builtin return
-       builtin return
-     fi
-     "${PAGER:-less}" -- "$temporary_dir/$temporary_file" || builtin return
-     builtin return
+    __sdb_sqlite <<< "${sql_commands[@]}" >> "$temporary_dir/$temporary_file" 2>&1 || builtin return
+
+    if [[ $PAGER  = less ]]; then
+      builtin command -p "$PAGER" -Ss -- "$temporary_dir/$temporary_file" || builtin return
+      builtin return
+    fi
+    "${PAGER:-less}" -- "$temporary_dir/$temporary_file" || builtin return
+    builtin return
   }
-
 fi
 
 # ******************************************************************************************** #

@@ -247,6 +247,8 @@ Error where it says database or table is missing.
 
   *  Check if the table has been removed.
 
+  *  A quick fix is to rename the database to something else and run **exec bash**
+
 The command **exit** does not exit the current shell session.
 
   *  Invoke the builtin by:  **builtin exit**
