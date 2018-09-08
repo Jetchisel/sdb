@@ -1,4 +1,4 @@
-Version 3.4.7 Release note of sdb.
+Version 3.4.8 Release note of sdb.
 
 ============================================================================================================================================
 
@@ -62,6 +62,8 @@ FIXES
 -  Fix the wrong directory for some corner cases where it fails.
 -  Fix the clean up of tempfiles.
 -  Add the missing tty column during the creation of the table history.
+-  Fix the errors when doing CTRL-C or ^c.
+-  Fix error in epoch time search when the end date is omitted.
 
 ============================================================================================================================================
 

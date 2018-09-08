@@ -2,9 +2,9 @@
 #: Title           : sdb                                                                       #
 #: Sypnosis        : sdb [OPTIONS]... [QUERY]...                                               #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Fri 07 Sep 2018 01:21:55 AM +08  /  Thu Sep  6 17:21:55 UTC 2018          #
+#: Last Edit       : Sat 08 Sep 2018 10:47:50 AM +08  /  Sat Sep  8 02:47:50 UTC 2018          #
 #: License         : MIT                                                                       #
-#: Version         : 3.4.7                                                                     #
+#: Version         : 3.4.8                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
 #: Description     : Log bash_history in a database (A fork of dbhist.sh by Dennis Gladkikh)   #
 #: Options         : [abcdehlmnoprsuvwAEMST?]                                                  #
@@ -51,7 +51,7 @@
 #   HISTFILE=$HOME/.bash_history                                                               #
 #   HISTCONTROL=ignorespace:erasedups                                                          #
 #   SDB_HISTORY=true                                                                           #
-#   SDB_DATABASE=$HOME/.bash_history.sqlite.                                                   #
+#   SDB_DATABASE=$HOME/.bash_history.sqlite                                                    #
 #                                                                                              #
 #   Change The value of SDB_HISTORY from "true" to "false" to disable sdb.                     #
 #   Change the value of SDB_DATABASE to something/somewhere else for multi-user set up.        #
@@ -87,7 +87,7 @@ __sdb_warn_() {
 }
 
 # ******************************************************************************************** #
-#              Check if bash version is lower than 4, exit with an error if true.              #
+#                   Check if bash version is lower than 4, exit if true.                       #
 # ******************************************************************************************** #
 
 __sdb_check_bash_version () {
@@ -278,6 +278,7 @@ if "${SDB_HISTORY:-true}"; then
     builtin printf '%s: %s\n' "$__sdb_name_" "base64 is either not installed or it is not in your PATH!" >&2
     builtin return 127
   fi
+  TMPDIR=${TMPDIR:-/tmp}
   __sdb_salt=$(builtin command -p dd if=/dev/urandom bs=32 count=1 2>/dev/null | builtin command -p base64)
   __sdb_initialized=0
   __sdb_pwd=$(builtin pwd)
@@ -648,7 +649,6 @@ if "${SDB_HISTORY:-true}"; then
     builtin local def0='+------------+--------+---------------------+'
     builtin local def1='|     ID     | COUNT  |      DATE/TIME      |'
     builtin local def2='+------------+--------+---------------------+'
-    TMPDIR=${TMPDIR:-/tmp}
     temporary_file=__${__sdb_name_}_tempfile_$RANDOM
     builtin declare -a hrt
     builtin declare -a sdb_opt
@@ -934,7 +934,7 @@ if "${SDB_HISTORY:-true}"; then
 # ******************************************************************************************** #
 
     builtin trap 'builtin command -p rm -rf -- "$temporary_dir"' return
-    builtin trap 'builtin return 1' 1 2 3 15
+    builtin trap 'builtin return 1 >/dev/null 2>&1' 1 2 3 15
     temporary_dir=$(builtin command -p mktemp -d "$TMPDIR/sdb.XXXXXXXXXXXXXXXXXXXXXXXXXXXXX") || {
       builtin printf 'ERROR creating a temporary files\n' >&2
       builtin return 1
@@ -1111,7 +1111,7 @@ if "${SDB_HISTORY:-true}"; then
 
     if ((time_search && ! Hrt)); then
       sql_commands12=(
-        "AND (epoch BETWEEN $(builtin command -p date -d"${time_search0%,*}" "+%s") AND $(builtin command -p date -d"${time_search0#*,}" "+%s"))"
+        "AND (epoch BETWEEN $(builtin command -p date -d"$time_search1" "+%s") AND $(builtin command -p date -d"${time_search2:-now}" "+%s"))"
         )
      fi
 
