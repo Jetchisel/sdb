@@ -38,6 +38,11 @@ set -o history
 In some cases you need to put a test if it is enabled already, something like.
 
 ```shell
+set -o | grep -q '^history[[:space:]]\{1,\}on$' || set -o history                          #
+```
+or
+
+```shell
 if [[ "$(set -o | awk '$1 == "history" {print $2}')" = off ]]; then
   set -o history
 fi
@@ -229,6 +234,13 @@ SQLite database is used for storing data on mobile devices. It's important to se
 rooting and jailbreaking. SQLite database has become the first choice for storing data on mobile devices.
 SQLite databases are just files that are stored on the file system.
 ```
+
+To sum it up, sqlite does not do a server and client mode. It does not need a granting of permissions or
+authentications. It is file based, so if only you and or a group of trusted users will use/share the data
+base then that should be free from all of that injection thing since that happens on a server that is open
+for access to the public, meaning any one or thing that has a browser and/or has access to the internet can
+view/reach your servers then that is where the problem starts. Still don't take my word for it, read what the
+license file has to say.
 
 ---
 ### Trouble shooting

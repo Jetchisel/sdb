@@ -2,9 +2,9 @@
 #: Title           : sdb                                                                       #
 #: Sypnosis        : sdb [OPTIONS]... [QUERY]...                                               #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Sat 08 Sep 2018 10:47:50 AM +08  /  Sat Sep  8 02:47:50 UTC 2018          #
+#: Last Edit       : Thu 20 Sep 2018 00:13:00 AM +08  /  Wed Sep 19 16:13:00 UTC 2018          #
 #: License         : MIT                                                                       #
-#: Version         : 3.4.8                                                                     #
+#: Version         : 3.4.9                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
 #: Description     : Log bash_history in a database (A fork of dbhist.sh by Dennis Gladkikh)   #
 #: Options         : [abcdehlmnoprsuvwAEMST?]                                                  #
@@ -43,9 +43,7 @@
 # Configuration:                                                                               #
 #   Add the following entry in your shell rc file, e.g. "$HOME/.bashrc"                        #
 #                                                                                              #
-#   if [[ "$(set -o | awk '$1 == "history" {print $2}')" = off ]]; then                        #
-#     set -o history                                                                           #
-#   fi                                                                                         #
+#   set -o | grep -q '^history[[:space:]]\{1,\}on$' || set -o history                          #
 #   HISTSIZE=1000                                                                              #
 #   HISTTIMEFORMAT="%s "                                                                       #
 #   HISTFILE=$HOME/.bash_history                                                               #
@@ -156,30 +154,34 @@ OPTIONS:
 DATE/TIME
   The date/time format is in Unix epoch time. GNU date(1) has some option to convert that into human readable format
   It also has an option  which allows you to say  things like  today, now, yesterday, -1 month, last year  and so on
-  The -[tT] or --time-search-[epoch] make use of those words. The format is "startdate,end date" [lower|upper] bound
-  It should be  separated by a comma or just "start_date". Start date should  always  come first followed by the end
-  date. Both arguments needs  to be quoted together, otherwise the shell  will see it as two arguments. The end date
-  can be omitted and will default to `now`, the value of `date -d'now' '+%F %T'`
+  The -[tT] or --time-search-[epoch] make use of those words. The  format is "startdate,enddate" [lower,upper] bound
+  It should be  separated by  a comma or just the "startdate". Start date should  always  come first followed by the
+  end date. Both arguments needs to be quoted together, otherwise the shell will see it as two arguments. both dates
+  can be nested if needed. The end date can be omitted and will default to now, the value of `date -d'now' '+%F %T'`
 
 EXAMPLES
-  search between yesterday and now.
+  Search between yesterday and now.
 
   "yesterday, now"
 
-  search between yesterday and an hour ago
+  Search between yesterday and an hour ago
 
   "-1 day, -1 hour"
 
-  search between a year ago and today.
+  Search between a year ago and today.
 
   "1 year ago, today"
 
-  search between last tuesday and a minute ago.
+  Search between last tuesday and a minute ago.
 
   "last tuesday, -1 minute"
 
+  An example of a nested dates search. (It does'nt get more complicated than that!)
+
+  "-1year -1month -1week -3days -30min -30sec,5months ago 1hour ago 30minutes ago -45sec"
+
   The -t option shows the Human readable time format because 99.9% of general Human population cannot convert the
-  raw epoch time format into a human readable one without blinking an eye or twitching a muscle :-).
+  raw epoch time format into a Human readable one without blinking an eye or twitching a muscle :-).
 
   See the manual for more info on GNU date(1).
 
@@ -279,6 +281,9 @@ if "${SDB_HISTORY:-true}"; then
     builtin return 127
   fi
   TMPDIR=${TMPDIR:-/tmp}
+  __sdb_pts=$(builtin command -p tty) || builtin return
+  __sdb_pts=${__sdb_pts#*dev}
+  __sdb_pts=${__sdb_pts//\/}
   __sdb_salt=$(builtin command -p dd if=/dev/urandom bs=32 count=1 2>/dev/null | builtin command -p base64)
   __sdb_initialized=0
   __sdb_pwd=$(builtin pwd)
@@ -404,7 +409,7 @@ if "${SDB_HISTORY:-true}"; then
     builtin local epoch=
     builtin local total0=
     builtin local total1=
-    builtin local regexp2=
+    builtin local regexp=
     builtin local logname=
     builtin local command=
     builtin local hostname=
@@ -427,13 +432,13 @@ if "${SDB_HISTORY:-true}"; then
     builtin local uncaptured_command=
     builtin local previous_user_hosts=
     builtin local sdb_recent_pwd=
-    pts=$(builtin command -p tty) || builtin return
-    pts=${pts#*dev}
-    pts=${pts//\/}
-    pwd=$(builtin pwd)
-    pwd=${pwd//$'\n'/\\n}
+    __sdb_pts=$(builtin command -p tty) || builtin return
+    __sdb_pts=${__sdb_pts#*dev}
+    __sdb_pts=${__sdb_pts//\/}
     __sdb_pwd=$(builtin pwd)
     __sdb_pwd=${__sdb_pwd//$'\n'/\\n}
+    pwd=$(builtin pwd)
+    pwd=${pwd//$'\n'/\\n}
 
     if [[ ${__sdb_oldpwd[-1]} != $__sdb_pwd ]]; then
       pwd=${__sdb_oldpwd[-1]}
@@ -485,7 +490,7 @@ if "${SDB_HISTORY:-true}"; then
             __sdb_sqlite ".sep \n" "SELECT salt,ppid,user_hosts,cmd,epoch,tty,exit_status FROM history WHERE
             user_hosts = '$__sdb_user_host' AND epoch < '$uncaptured_epoch' ORDER BY ID DESC LIMIT 1;"
             ) 8< <(
-             if [[ ${previous_pts//[[:alpha:]]} -le ${pts//[[:alpha:]]} ]]; then
+             if [[ -z ${previous_pts//[[:alpha:]]} || ${previous_pts//[[:alpha:]]} -le ${__sdb_pts//[[:alpha:]]} ]]; then
                 __sdb_sqlite "SELECT DISTINCT cwd FROM directories WHERE
                 user_hosts = '$__sdb_user_host' AND epoch < '$uncaptured_epoch' ORDER BY ID DESC LIMIT 1;"
               else
@@ -564,7 +569,7 @@ if "${SDB_HISTORY:-true}"; then
 	"${command__//\"/\"\"}",
 	"$PPID",
 	"${Last_Command:-777}",
-	"$pts",
+	"$__sdb_pts",
 	"$__sdb_user_host",
 	"${pwd//\"/\"\"}",
 	"$__sdb_salt"
@@ -632,7 +637,7 @@ if "${SDB_HISTORY:-true}"; then
     builtin local time_search1=
     builtin local time_search2=
     builtin local execute_var0=
-    builtin local regexpath=[./]
+    builtin local regexpath=[.]
     builtin local temporary_dir=
     builtin local temporary_file=
     builtin local both_user_host=
@@ -649,12 +654,12 @@ if "${SDB_HISTORY:-true}"; then
     builtin local def0='+------------+--------+---------------------+'
     builtin local def1='|     ID     | COUNT  |      DATE/TIME      |'
     builtin local def2='+------------+--------+---------------------+'
-    temporary_file=__${__sdb_name_}_tempfile_$RANDOM
     builtin declare -a hrt
     builtin declare -a sdb_opt
-    builtin declare -a verbose_sql_commands
     builtin declare -a sql_commands
     builtin declare -a sql_commands{0..14}
+    builtin declare -a verbose_sql_commands
+    temporary_file=__${__sdb_name_}_tempfile_$RANDOM
 
     if builtin type -P tput >/dev/null; then
       G=$(builtin command -p tput bold)
@@ -829,36 +834,54 @@ if "${SDB_HISTORY:-true}"; then
           ;;
         --recurse-path|-r)
           builtin shift
-          if [[ -z $1 ]]; then
+          [[ -z $1 ]] && {
             __sdb_warn_ "path requires a value!" "Try '$__sdb_name_ --help'"
             builtin return 1
-          elif [[ $1 =~ $regexpath ]]; then
+          }
+          rpathquery=$1
+          [[ $rpathquery = '~/'* ]] && rpathquery=$HOME${rpathquery#*?}
+          if [[ $rpathquery = "~$__sdb_logname_"* ]]; then
+            (( EUID > 0 )) && rpathquery=${HOME%"$__sdb_logname_"}${rpathquery#*?}
+            (( EUID == 0 )) && rpathquery=/${rpathquery#*?}
+          fi
+          [[ -d $rpathquery ]] || {
+            __sdb_warn_ "$rpathquery does not appear to be a directory!" "Try '$__sdb_name_ --help'"
+            builtin return 1
+          }
+          if [[ $rpathquery =~ $regexpath ]]; then
             if builtin type -P realpath >/dev/null; then
-              rpathquery=$(builtin command -p realpath -- "$1")
+              rpathquery=$(builtin command -p realpath -- "$rpathquery") || return
             else
-              __sdb_warn_ "Could not resolve path $G$1$R" "realpath is either not installed or it is not in your PATH"
+              __sdb_warn_ "Could not resolve path $G$rpathquery$R" "realpath is either not installed or it is not in your PATH"
               builtin return 1
             fi
-          else
-            rpathquery=$1
           fi
-          rpath=1
           pwd=1
+          rpath=1
           ;;
         --path|-p)
           builtin shift
-          if [[ -z $1 ]]; then
+          [[ -z $1 ]] && {
             __sdb_warn_ "path requires a value!" "Try '$__sdb_name_ --help'"
             builtin return 1
-          elif [[ $1 =~ $regexpath ]]; then
+          }
+          pathquery=$1
+          [[ $pathquery = '~/'* ]] && pathquery=$HOME${pathquery#*?}
+          if [[ $pathquery = "~$__sdb_logname_"* ]]; then
+            (( EUID > 0 )) && pathquery=${HOME%"$__sdb_logname_"}${pathquery#*?}
+            (( EUID == 0 )) && pathquery=/${pathquery#*?}
+          fi
+          [[ -d $pathquery ]] || {
+            __sdb_warn_ "$pathquery does not appear to be a directory!" "Try '$__sdb_name_ --help'"
+            builtin return 1
+          }
+          if [[ $pathquery =~ $regexpath ]]; then
             if builtin type -P realpath >/dev/null; then
-              pathquery=$(builtin command -p realpath -- "$1")
+              pathquery=$(builtin command -p realpath -- "$pathquery") || return
             else
-              __sdb_warn_ "Could not resolve path $G$1$R" "realpath is either not installed or it is not in your PATH"
+              __sdb_warn_ "Could not resolve path $G$pathquery$R" "realpath is either not installed or it is not in your PATH"
               builtin return 1
             fi
-          else
-            pathquery=$1
           fi
           pwd=1
           path=1
@@ -936,7 +959,7 @@ if "${SDB_HISTORY:-true}"; then
     builtin trap 'builtin command -p rm -rf -- "$temporary_dir"' return
     builtin trap 'builtin return 1 >/dev/null 2>&1' 1 2 3 15
     temporary_dir=$(builtin command -p mktemp -d "$TMPDIR/sdb.XXXXXXXXXXXXXXXXXXXXXXXXXXXXX") || {
-      builtin printf 'ERROR creating a temporary files\n' >&2
+      builtin printf 'ERROR creating temporary files\n' >&2
       builtin return 1
     }
 
@@ -1027,15 +1050,16 @@ if "${SDB_HISTORY:-true}"; then
         SELECT * FROM history WHERE 1"
     else
       first_sql_commands="
-       SELECT
-         substr ('           '||max(id),-12) || ' | ' ||
-         substr ('      '||count(*),-6) || ' | ' ||
-         datetime (max (epoch), 'unixepoch', 'localtime') || ' | ' ||
-         $User_Host
-         $ExitStatus
-         substr ('        '||max(tty),-7) || ' | ' ||
-         $pwd_q"
+        SELECT
+          substr ('           '||max(id),-12) || ' | ' ||
+          substr ('      '||count(*),-6) || ' | ' ||
+          datetime (max (epoch), 'unixepoch', 'localtime') || ' | ' ||
+          $User_Host
+          $ExitStatus
+          substr ('        '||max(tty),-7) || ' | ' ||
+          $pwd_q"
     fi
+
 
 # ******************************************************************************************** #
 #     Sqlite3 commands to be executed depending on the args/options given by the user.         #
