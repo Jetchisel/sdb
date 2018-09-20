@@ -2,14 +2,14 @@
 #: Title           : sdb                                                                       #
 #: Sypnosis        : sdb [OPTIONS]... [QUERY]...                                               #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Thu 20 Sep 2018 12:45:16 PM +08  /  Thu Sep 20 04:45:16 UTC 2018          #
+#: Last Edit       : Fri 21 Sep 2018 01:53:39 AM +08  /  Thu Sep 20 17:53:39 UTC 2018          #
 #: License         : MIT                                                                       #
-#: Version         : 3.5.9                                                                     #
+#: Version         : 3.6.9                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
 #: Description     : Log bash_history in a database (A fork of dbhist.sh by Dennis Gladkikh)   #
 #: Options         : [abcdehlmnoprsuvwAEMST?]                                                  #
 #: Home Page       : https://github.com/Jetchisel/sdb                                          #
-#: ExtComm         : base64,date,dd,less,mktemp,whoami,realpath,rm,sqlite3,tput,uname          #
+#: ExtComm         : base64,date,dd,less,mktemp,whoami,realpath,rm,sqlite3,tput,tty,uname      #
 #: Copyright       : Jason V. Ferrer 2017-2018                                                 #
 # ============================================================================================ #
 
@@ -266,7 +266,7 @@ NOTE
       PAGER='less +/^DESCRIPTION' man 1p return
 
 SEE ALSO
-   exit(1p), return(1p), sqlite3(1), date(1), signal(7)
+   exit(1p), return(1p), bash(1), sqlite3(1), date(1), signal(7)
    https://www.sqlite.org/index.html
 
 AUTHOR
@@ -794,6 +794,10 @@ if "${SDB_HISTORY:-true}"; then
               Hrt=1;;
           esac
           builtin shift
+          builtin type -P date >/dev/null || {
+            __sdb_warn_ "Could not resolve the input [$1]." "date is either not installed or it is not in your PATH!"
+            builtin return 1
+          }
           if [[ -z $1 ]]; then
             __sdb_warn_ "Time requires two values, separated by a comma!" "Try '$__sdb_name_ --help'"
             builtin return 1
