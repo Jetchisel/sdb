@@ -240,7 +240,7 @@ authentications. It is file based, so if only you and or a group of trusted user
 base then that should be free from all of that injection thing since that happens on a server that is open
 for access to the public, meaning any one or thing that has a browser and/or has access to the internet can
 view/reach your servers then that is where the problem starts. Still don't take my word for it, read what the
-license file has to say.
+license file of this project has to say.
 
 ---
 ### Trouble shooting
@@ -287,7 +287,12 @@ Change the value of **something** which is the **777** and **anotherthing** whic
 
 Add a new function that can navigate through the previous directories by parsing the directories table created by sdb.
 
-* **sdc** (https://github.com/Jetchisel/sdc)
+* **sdc** https://github.com/Jetchisel/sdc
+
+An optional backup script for the database is available also. bus-db aka **B**ack **U**p **S**qlite **D**ata**B**ase
+
+* **busdb** https://github.com/Jetchisel/busdb
+
 ----
 ## Author
 
@@ -303,4 +308,5 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 
 * The author of dbhist.sh Denis Gladkikh, - [Denis](https://www.outcoldman.com/en/archive/2017/07/19/dbhist)
 * D.J. Mills, - [e36freak](https://github.com/e36freak)
+* Salute to anyone/everyone's code/insigth that has been used in this project.
 * Others that was not mentioned :)

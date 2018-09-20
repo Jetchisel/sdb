@@ -1,4 +1,4 @@
-Version 3.4.9 Release note of sdb.
+Version 3.5.9 Release note of sdb.
 
 ============================================================================================================================================
 
@@ -51,7 +51,8 @@ IMPROVEMENTS
 -  Add a Human Readable time format when searching for time/date.
 -  Use the native sqlite command when inserting an epoch date, instead of using date(1).
 -  Accept start_date as the only argument when searching by date/time.
--  Accept both ~/ and ~$USER as the input path on long options.
+-  Accept both ~/ and ~$USER as the input path when using both the long options.
+-  Add more info about the exit/return code of a given command.
 
 ============================================================================================================================================
 

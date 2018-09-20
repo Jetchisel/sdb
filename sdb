@@ -2,9 +2,9 @@
 #: Title           : sdb                                                                       #
 #: Sypnosis        : sdb [OPTIONS]... [QUERY]...                                               #
 #: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Thu 20 Sep 2018 00:13:00 AM +08  /  Wed Sep 19 16:13:00 UTC 2018          #
+#: Last Edit       : Thu 20 Sep 2018 12:45:16 PM +08  /  Thu Sep 20 04:45:16 UTC 2018          #
 #: License         : MIT                                                                       #
-#: Version         : 3.4.9                                                                     #
+#: Version         : 3.5.9                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
 #: Description     : Log bash_history in a database (A fork of dbhist.sh by Dennis Gladkikh)   #
 #: Options         : [abcdehlmnoprsuvwAEMST?]                                                  #
@@ -161,28 +161,22 @@ DATE/TIME
 
 EXAMPLES
   Search between yesterday and now.
+    "yesterday, now"
 
-  "yesterday, now"
-
-  Search between yesterday and an hour ago
-
-  "-1 day, -1 hour"
+  Search between yesterday and an hour ago.
+    "-1 day, -1 hour"
 
   Search between a year ago and today.
-
-  "1 year ago, today"
+    "1 year ago, today"
 
   Search between last tuesday and a minute ago.
-
-  "last tuesday, -1 minute"
+    "last tuesday, -1 minute"
 
   An example of a nested dates search. (It does'nt get more complicated than that!)
-
-  "-1year -1month -1week -3days -30min -30sec,5months ago 1hour ago 30minutes ago -45sec"
+    "-1year -1month -1week -3days -30min -30sec,5months ago 1hour ago 30minutes ago -45sec"
 
   The -t option shows the Human readable time format because 99.9% of general Human population cannot convert the
   raw epoch time format into a Human readable one without blinking an eye or twitching a muscle :-).
-
   See the manual for more info on GNU date(1).
 
 QUERY
@@ -209,36 +203,36 @@ WILD CARD PATTERNS
 USING THE OPTIONS
   Long options that takes an argument also supports the following syntax:
 
-  --option=argument
-  --option argument
+    --option=argument
+    --option argument
 
   Short options that does not take an argument can be joined as one option:
 
-  -adlsv
+    -adlsv
 
   Both short and long option can be used as well.
 
-  --option=argument -acv -m+
+    --option=argument -acv -m+
 
-  Redirect the output to a file use the redirection "greater than" > sign.
+  To redirect the output to a file use the redirection "greater than" > sign.
 
-  sdb -vcam+ > file
+    sdb -vcam+ > file
 
 PAGER/EDITOR
-  The PAGER and EDITOR  environment  variables is used/accepted when doing a
-  search/query/edit for the commands. PAGER defaults to  whatever the system
+  The PAGER and EDITOR  environment  variables can be used/accepted when doing
+  a search/query/edit for the commands. PAGER defaults to  whatever the system
   is using. EDITOR defaults to vim if empty.
 
-  PAGER=kate sdb -vcam+
+    PAGER=kate sdb -vcam+
 
-  EDITOR=nano sdb -E 101
+    EDITOR=nano sdb -E 101
 
   Some editors like gvim does not work by default without some options.
   create a function first.
 
-  gvim() { builtin command -p gvim -f "$@"; }
+    gvim() { builtin command -p gvim -f "$@"; }
 
-  PAGER=gvim sdb -vcam+
+    PAGER=gvim sdb -vcam+
 
 THE FULL ORDER OF COLUMNS
    1rst column: ID column, increment of all the executed commands.
@@ -257,10 +251,23 @@ NOTE
    exited with  zero is a success. Consult  the documentation of the program in
    question.
 
+   See the 'EXIT STATUS' section from bash(1).
+
+      PAGER='less +/^EXIT\ STATUS' man bash
+
+   Every Unix process returns an exit status code to its parent. This is an
+   unsigned 8-bit integer, 0 to 255 inclusive. A script returns the exit status
+   of the last command executed, unless you specifically call 'exit' with an
+   argument. Functions "return" an 8-bit status code also.
+
+   See the DESCRIPTION section from exit(1p) and return(1p).
+
+      PAGER='less +/^DESCRIPTION' man 1p exit
+      PAGER='less +/^DESCRIPTION' man 1p return
+
 SEE ALSO
-   sqlite3(1), signal(7), date(1)
+   exit(1p), return(1p), sqlite3(1), date(1), signal(7)
    https://www.sqlite.org/index.html
-   The "EXIT STATUS" section from bash(1).
 
 AUTHOR
    Jason V. Ferrer <jetchisel@opensuse.org>
