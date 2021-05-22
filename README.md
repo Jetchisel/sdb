@@ -38,14 +38,7 @@ set -o history
 In some cases you need to put a test if it is enabled already, something like.
 
 ```shell
-set -o | grep -q '^history[[:space:]]\{1,\}on$' || set -o history                          #
-```
-or
-
-```shell
-if [[ "$(set -o | awk '$1 == "history" {print $2}')" = off ]]; then
-  set -o history
-fi
+if ! shopt -q -o history; then set -o history; fi
 ```
 
 Bash history time format **MUST** be in **epoch**.

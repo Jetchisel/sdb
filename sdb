@@ -1,16 +1,16 @@
 # ============================================================================================ #
 #: Title           : sdb                                                                       #
 #: Sypnosis        : sdb [OPTIONS]... [QUERY]...                                               #
-#: Date Created    : Sat 25 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
-#: Last Edit       : Mon 02 Mar 2020 19:02:55 PM PST  /  Mon Mar  2 11:02:55 UTC 2020          #
+#: Date Created    : Sat 27 Nov 2017 10:10:47 AM +08  /  Sat Nov 25 02:10:47 UTC 2017          #
+#: Last Edit       : Sat 22 May 2021 21:10:51 PM PST  /  Sat May 22 13:10:51 UTC 2021          #
 #: License         : MIT                                                                       #
-#: Version         : 3.7.2                                                                     #
+#: Version         : 5.7.4                                                                     #
 #: Maintainer      : Jason V. Ferrer '<jetchisel@opensuse.org>'                                #
 #: Description     : Log bash_history in a database (A fork of dbhist.sh by Dennis Gladkikh)   #
 #: Options         : [abcdehlmnoprsuvwAEMST?]                                                  #
 #: Home Page       : https://github.com/Jetchisel/sdb                                          #
-#: ExtComm         : base64,date,dd,less,mktemp,whoami,realpath,rm,sqlite3,tput,tty,uname      #
-#: Copyright       : Jason V. Ferrer 2017-2018                                                 #
+#: ExtComm         : base66,date,dd,less,mktemp,whoami,realpath,rm,sqlite3,tput,tty,uname      #
+#: Copyright       : Jason V. Ferrer 2019-2018                                                 #
 # ============================================================================================ #
 
 ################################################################################################
@@ -43,7 +43,7 @@
 # Configuration:                                                                               #
 #   Add the following entry in your shell rc file, e.g. "$HOME/.bashrc"                        #
 #                                                                                              #
-#   set -o | grep -q '^history[[:space:]]\{1,\}on$' || set -o history                          #
+#   if ! shopt -q -o history; then set -o history; fi                                          #
 #   HISTSIZE=1000                                                                              #
 #   HISTTIMEFORMAT="%s "                                                                       #
 #   HISTFILE=$HOME/.bash_history                                                               #
@@ -361,14 +361,14 @@ if "${SDB_HISTORY:-true}"; then
 
   if [[ -f $__sdb_file && $(__sdb_recent_pwd) != $__sdb_pwd ]]; then {
     __sdb_sqlite <<-EOF
-	INSERT INTO directories (
-	epoch, ppid, user_hosts, cwd, salt
-	)
-	VALUES (
-	STRFTIME ('+%s', 'now'), "$PPID", "$__sdb_user_host", "${__sdb_pwd//\"/\"\"}", "$__sdb_salt"
-	);
-	EOF
-	}
+      INSERT INTO directories (
+      epoch, ppid, user_hosts, cwd, salt
+    )
+      VALUES (
+      STRFTIME ('+%s', 'now'), "$PPID", "$__sdb_user_host", "${__sdb_pwd//\"/\"\"}", "$__sdb_salt"
+    );
+EOF
+}
   fi
 
 # ******************************************************************************************** #
@@ -459,14 +459,14 @@ if "${SDB_HISTORY:-true}"; then
 
   if [[ $(__sdb_recent_pwd) != $__sdb_pwd ]]; then {
     __sdb_sqlite <<-EOF
-	INSERT INTO directories (
-	epoch, ppid, user_hosts, cwd, salt
-	)
-	VALUES (
-	STRFTIME ('+%s', 'now'), "$PPID", "$__sdb_user_host", "${__sdb_pwd//\"/\"\"}", "$__sdb_salt"
-	);
-	EOF
-	}
+      INSERT INTO directories (
+      epoch, ppid, user_hosts, cwd, salt
+    )
+      VALUES (
+      STRFTIME ('+%s', 'now'), "$PPID", "$__sdb_user_host", "${__sdb_pwd//\"/\"\"}", "$__sdb_salt"
+    );
+EOF
+}
   fi
 
 # ******************************************************************************************** #
@@ -509,22 +509,22 @@ if "${SDB_HISTORY:-true}"; then
               )
               {
      __sdb_sqlite <<-END
-	INSERT INTO history (
-	hist_id, epoch, cmd, ppid, exit_status, tty, user_hosts, pwd, salt
-	)
-	VALUES (
-	"$uncaptured_num",
-	"$uncaptured_epoch",
-	"${uncaptured_command//\"/\"\"}",
-	"$uncaptured_ppid",
-	"0",
-	"$previous_pts",
-	"$__sdb_user_host",
-	"${previous_cwd//\"/\"\"}",
-	"$uncaptured_salt"
-	);
-	END
-	}
+    INSERT INTO history (
+      hist_id, epoch, cmd, ppid, exit_status, tty, user_hosts, pwd, salt
+    )
+    VALUES (
+      "$uncaptured_num",
+      "$uncaptured_epoch",
+      "${uncaptured_command//\"/\"\"}",
+      "$uncaptured_ppid",
+      "0",
+      "$previous_pts",
+      "$__sdb_user_host",
+      "${previous_cwd//\"/\"\"}",
+      "$uncaptured_salt"
+    );
+END
+}
     fi
       fi
     else
@@ -571,22 +571,22 @@ if "${SDB_HISTORY:-true}"; then
 
     while builtin read -r command__ <&8; do {
       __sdb_sqlite <<-END
-	INSERT INTO history (
-	hist_id, epoch, cmd, ppid, exit_status, tty, user_hosts, pwd, salt
-	)
-	VALUES (
-	"${num:-$(( $(__sdb_sqlite 'SELECT hist_id FROM history ORDER BY id DESC LIMIT 1;') + 1 )) }",
-	"${epoch:-"$(builtin command date -d 'now' '+%s')"}",
-	"${command__//\"/\"\"}",
-	"$PPID",
-	"${Last_Command:-777}",
-	"$__sdb_pts",
-	"$__sdb_user_host",
-	"${pwd//\"/\"\"}",
-	"$__sdb_salt"
-	);
-	END
-	}
+      INSERT INTO history (
+        hist_id, epoch, cmd, ppid, exit_status, tty, user_hosts, pwd, salt
+      )
+      VALUES (
+        "${num:-$(( $(__sdb_sqlite 'SELECT hist_id FROM history ORDER BY id DESC LIMIT 1;') + 1 )) }",
+        "${epoch:-"$(builtin command date -d 'now' '+%s')"}",
+        "${command__//\"/\"\"}",
+        "$PPID",
+        "${Last_Command:-777}",
+        "$__sdb_pts",
+        "$__sdb_user_host",
+        "${pwd//\"/\"\"}",
+        "$__sdb_salt"
+      );
+END
+}
   done 8<<< "${command:-HISTTIMEFORMAT=\"%s \"}" || builtin return
 
     __sdb__executioner__
@@ -688,7 +688,7 @@ if "${SDB_HISTORY:-true}"; then
 
     while (($#)); do
       case $1 in
-        -[!-0-9]?*)
+        (-[!-0-9]?*)
           for ((i=1; i<${#1}; i++)); do
             c=${1:i:1}
             options+=("-$c")
@@ -698,9 +698,9 @@ if "${SDB_HISTORY:-true}"; then
             fi
           done
           ;;
-        --?*=*) options+=("${1%%=*}" "${1#*=}");;
-        --) builtin shift && options+=("$1") && builtin break;;
-        *) options+=("$1");;
+        (--?*=*) options+=("${1%%=*}" "${1#*=}");;
+        (--) builtin shift && options+=("$1") && builtin break;;
+        (*) options+=("$1");;
       esac
       builtin shift
     done
@@ -723,15 +723,15 @@ if "${SDB_HISTORY:-true}"; then
 
     while [[ $1 = -?* ]]; do
       case $1 in
-        --shell|-S)
+        (--shell|-S)
           __sdb_sqlite
           builtin return
           ;;
-        --help|-\?)
+        (--help|-\?)
           ____ShowHelp____
           builtin return
           ;;
-        --max-count|-m)
+        (--max-count|-m)
           builtin shift
           if [[ -z $1 ]]; then
             __sdb_warn_ "Max count requires a value!" "Try '$__sdb_name_ --help'"
@@ -746,30 +746,30 @@ if "${SDB_HISTORY:-true}"; then
             max=$1
           fi
           ;;
-        --ascending|-A)
+        (--ascending|-A)
           ascend=1
           ;;
-        --all|-a)
+        (--all|-a)
           all=1
           ;;
-        --common-info|-c)
+        (--common-info|-c)
           pwd=1
           user_host=1
           exit_stat=1
           ;;
-        --last-status|-l)
+        (--last-status|-l)
           exit_stat=1
           ;;
-        --mode-line|-M)
+        (--mode-line|-M)
           modeline=1
           ;;
-        --other-users|-o)
+        (--other-users|-o)
           Others=1
           ;;
-        --self|-s)
+        (--self|-s)
           self=1
           ;;
-        --begin-with|-b)
+        (--begin-with|-b)
           builtin shift
           begin=1
           if ((whole_line)); then
@@ -782,7 +782,7 @@ if "${SDB_HISTORY:-true}"; then
           fi
           query_begin=$1
           ;;
-        --host|-h)
+        (--host|-h)
           builtin shift
           if [[ -z $1 ]]; then
             __sdb_warn_ "host requires a value!" "Try '$__sdb_name_ --help'"
@@ -793,9 +793,9 @@ if "${SDB_HISTORY:-true}"; then
           OnlyHost=1
           HostOnly=%@${1}
           ;;
-        --time-search|--time-search-epoch|-T|-t)
+        (--time-search|--time-search-epoch|-T|-t)
           case $1 in
-            --time-search|-t)
+            (--time-search|-t)
               Hrt=1;;
           esac
           builtin shift
@@ -824,7 +824,7 @@ if "${SDB_HISTORY:-true}"; then
             builtin return 1
           }
           ;;
-        --user|-u)
+        (--user|-u)
           builtin shift
           if [[ -z $1 ]]; then
             __sdb_warn_ "user requires a value!" "Try '$__sdb_name_ --help'"
@@ -835,7 +835,7 @@ if "${SDB_HISTORY:-true}"; then
           OnlyUser=1
           UserOnly=${1}@%
           ;;
-        --end-with|-e)
+        (--end-with|-e)
           builtin shift
           end=1
           if ((whole_line)); then
@@ -848,7 +848,7 @@ if "${SDB_HISTORY:-true}"; then
           fi
           query_end=$1
           ;;
-        --recurse-path|-r)
+        (--recurse-path|-r)
           builtin shift
           [[ -z $1 ]] && {
             __sdb_warn_ "path requires a value!" "Try '$__sdb_name_ --help'"
@@ -875,7 +875,7 @@ if "${SDB_HISTORY:-true}"; then
           pwd=1
           rpath=1
           ;;
-        --path|-p)
+        (--path|-p)
           builtin shift
           [[ -z $1 ]] && {
             __sdb_warn_ "path requires a value!" "Try '$__sdb_name_ --help'"
@@ -902,10 +902,10 @@ if "${SDB_HISTORY:-true}"; then
           pwd=1
           path=1
           ;;
-        --verbose|-v)
+        (--verbose|-v)
           verbose=1
           ;;
-        --with-word|-w)
+        (--with-word|-w)
           builtin shift
           whole_line=1
           if ((begin || end)); then
@@ -918,7 +918,7 @@ if "${SDB_HISTORY:-true}"; then
           fi
           query_whole=$1
           ;;
-        --execute-id|-E)
+        (--execute-id|-E)
           builtin shift
           execute=1
           if [[ -z $1 ]]; then
@@ -930,10 +930,10 @@ if "${SDB_HISTORY:-true}"; then
           fi
           execute_var=$1
           ;;
-        --directory|-d)
+        (--directory|-d)
           pwd=1
           ;;
-        --numeric-status|-n)
+        (--numeric-status|-n)
           builtin shift
           if [[ -z $1 ]]; then
             __sdb_warn_ "status requires a value!" "Try '$__sdb_name_ --help'"
@@ -946,11 +946,11 @@ if "${SDB_HISTORY:-true}"; then
           numeric_status=1
           numeric_status_value=$1
           ;;
-        --endopts)
+        (--endopts)
           builtin shift
           builtin break
           ;;
-        *)
+        (*)
            __sdb_warn_ "invalid option -- '$G$1$R'" "Try '$__sdb_name_ --help'"
            builtin return 1
           ;;
@@ -998,7 +998,7 @@ if "${SDB_HISTORY:-true}"; then
 
        while builtin printf -v menus '\n%s\n%s\n%s\n\n%s\n%s\n%s\n%s\n\n%s%s' "${sdb_opt[@]}" && builtin read -rp "$menus" -n 1 answer; do
           case $answer in
-            1)
+            (1)
               builtin echo
               #{ [[ -d "${execute_var0%"|"*}" ]] && builtin shopt -q autocd ; } || builtin printf '%s\n' "${execute_var0%"|"*}"
               if [[ -d "${execute_var0%"|"*}" ]]; then
@@ -1010,19 +1010,19 @@ if "${SDB_HISTORY:-true}"; then
               builtin eval "${execute_var0%"|"*}" || builtin return
               builtin return
               ;;
-            2) builtin return
+            (2) builtin return
               ;;
-            3)
+            (3)
               builtin echo
               __sdb_sqlite ".mode line" "select * from history where id = $execute_var;"
               builtin return
               ;;
-            4)
+            (4)
               builtin echo
               sdb_edit=1
               builtin break
               ;;
-            *)
+            (*)
               builtin printf '\n\n'
               __sdb_warn_ "invalid option -- '$G$answer$R'" "Try '[${G}1 2 3 4${R}]'"
               builtin return 1
